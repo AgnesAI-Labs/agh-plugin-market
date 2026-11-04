@@ -1,0 +1,136 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Agnes Harness official plugins",
+    "zh-cn": "Agnes Harness 官方插件"
+  },
+  "description": {
+    "en": "Official AGH plugins, one GitHub repository each.",
+    "zh-cn": "AGH 官方插件，每个插件一个 GitHub 仓库。"
+  },
+  "metadata": {
+    "categories": {},
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "@agnes-showcase/devboard",
+      "title": {
+        "en": "DevBoard R&D lifecycle workbench",
+        "zh-cn": "DevBoard 研发全流程工作台"
+      },
+      "description": {
+        "en": "A full-lifecycle R&D and quality workbench for a fictional rail-equipment company: gate profiles with co-signing, multi-discipline traceability, trials and first-article inspection, and the field-to-design loop on simulated data.",
+        "zh-cn": "虚构轨交装备企业的研发与质量工作台：评审点档案与会签、机电软多专业追溯、型式试验与首件、现场到设计的闭环，数据均为模拟。"
+      },
+      "author": "AgnesAI Labs",
+      "homepage": "https://github.com/AgnesAI-Labs/agh-app-devboard",
+      "repository": {
+        "url": "https://github.com/AgnesAI-Labs/agh-app-devboard"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "devboard",
+          "rd-workbench",
+          "quality"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "3.8.0",
+          "publishTimestamp": 1793769011,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/AgnesAI-Labs/agh-app-devboard",
+            "commit": "e79a2040ee323070e4b4437295efa1ddc3bc33fa"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@agnes-showcase/pharma-gmp",
+      "title": {
+        "en": "Sableleaf GMP Quality Hub",
+        "zh-cn": "沙叶 GMP 质量中枢"
+      },
+      "description": {
+        "en": "Fictional OSD quality application: batch evidence, deviation/CAPA, EM and human-approved QA release.",
+        "zh-cn": "虚构固体制剂质量应用：批记录、偏差/CAPA、EM 和人工批准的 QA 放行。"
+      },
+      "author": "AgnesAI Labs",
+      "homepage": "https://github.com/AgnesAI-Labs/agh-app-pharma-gmp",
+      "repository": {
+        "url": "https://github.com/AgnesAI-Labs/agh-app-pharma-gmp"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes",
+          "agh",
+          "gmp",
+          "pharma",
+          "quality"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.2.5",
+          "publishTimestamp": 1793769290,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/AgnesAI-Labs/agh-app-pharma-gmp",
+            "commit": "e7072a78c4a3369b13d1f0b5859e231b3d069288"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@agnes-showcase/aerospace-quality",
+      "title": {
+        "en": "Aerospace programme quality",
+        "zh-cn": "航天研制质量应用"
+      },
+      "description": {
+        "en": "A fictional spacecraft valve-driver programme: traceability, telemetry, MRB, configuration and double-five closure.",
+        "zh-cn": "虚构航天阀驱动项目：需求追溯、试验、MRB、技术状态与双五条归零。"
+      },
+      "author": "AgnesAI Labs",
+      "homepage": "https://github.com/AgnesAI-Labs/agh-app-aerospace-quality",
+      "repository": {
+        "url": "https://github.com/AgnesAI-Labs/agh-app-aerospace-quality"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agh-app",
+          "aerospace",
+          "quality",
+          "agnes-harness"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.1.4",
+          "publishTimestamp": 1793769547,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/AgnesAI-Labs/agh-app-aerospace-quality",
+            "commit": "f1f2ddb6ffca7d6a0ee3856d360427fb77417678"
+          },
+          "engines": {}
+        }
+      ]
+    }
+  ]
+}

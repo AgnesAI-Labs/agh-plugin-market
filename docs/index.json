@@ -131,6 +131,129 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@agnes/channel-dingtalk",
+      "title": {
+        "en": "DingTalk channel",
+        "zh-cn": "钉钉渠道"
+      },
+      "description": {
+        "en": "DingTalk Stream channel using the AGH channel bridge.",
+        "zh-cn": "独立钉钉 Stream 渠道，使用 AGH 统一渠道桥接。"
+      },
+      "author": "JoyfulDoge",
+      "homepage": "https://github.com/lzc970718/agh-plugin-dingtalk",
+      "repository": {
+        "url": "https://github.com/lzc970718/agh-plugin-dingtalk"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "channel",
+          "im",
+          "dingtalk"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.3.8",
+          "publishTimestamp": 1794191972,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/lzc970718/agh-plugin-dingtalk",
+            "commit": "ead75db43e63c309baa786932e5a0f3bc6d168f8"
+          },
+          "engines": {
+            "agh": ">=0.1.0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@agnes/channel-feishu",
+      "title": {
+        "en": "Feishu channel",
+        "zh-cn": "飞书渠道"
+      },
+      "description": {
+        "en": "Feishu and Lark WebSocket channel using the AGH channel bridge.",
+        "zh-cn": "独立飞书与 Lark 长连接渠道，使用 AGH 统一渠道桥接。"
+      },
+      "author": "JoyfulDoge",
+      "homepage": "https://github.com/lzc970718/agh-plugin-feishu",
+      "repository": {
+        "url": "https://github.com/lzc970718/agh-plugin-feishu"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "channel",
+          "im",
+          "feishu"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.3",
+          "publishTimestamp": 1794191972,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/lzc970718/agh-plugin-feishu",
+            "commit": "391b29f40006c4ed74f879590694076b4b909b48"
+          },
+          "engines": {
+            "agh": ">=0.1.0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "@agnes/channel-wechat",
+      "title": {
+        "en": "WeChat channel",
+        "zh-cn": "微信渠道"
+      },
+      "description": {
+        "en": "Personal WeChat iLink channel with a local QR login helper. Not WeCom.",
+        "zh-cn": "个人微信 iLink 渠道，提供本机扫码工具；不是企业微信。"
+      },
+      "author": "JoyfulDoge",
+      "homepage": "https://github.com/lzc970718/agh-plugin-wechat",
+      "repository": {
+        "url": "https://github.com/lzc970718/agh-plugin-wechat"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "channel",
+          "im",
+          "wechat"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.3",
+          "publishTimestamp": 1794191973,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/lzc970718/agh-plugin-wechat",
+            "commit": "25e21fe2813b6c83d6d55cb3bd7c2044472e5b18"
+          },
+          "engines": {
+            "agh": ">=0.1.0"
+          }
+        }
+      ]
     }
   ]
 }

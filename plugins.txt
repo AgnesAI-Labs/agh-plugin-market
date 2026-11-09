@@ -4,3 +4,6 @@
 https://github.com/AgnesAI-Labs/agh-app-devboard
 https://github.com/AgnesAI-Labs/agh-app-pharma-gmp
 https://github.com/AgnesAI-Labs/agh-app-aerospace-quality
+https://github.com/lzc970718/agh-plugin-dingtalk
+https://github.com/lzc970718/agh-plugin-feishu
+https://github.com/lzc970718/agh-plugin-wechat

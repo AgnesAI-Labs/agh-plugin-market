@@ -7,8 +7,9 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const root = new URL('..', import.meta.url).pathname
+const root = fileURLToPath(new URL('..', import.meta.url))
 const dir = process.argv[2]
 if (!dir) {
   console.error('usage: build-index.mjs <dir-with-clones>')
@@ -34,7 +35,7 @@ const plugins = urls.map((url) => {
     name: pkg.name,
     ...(meta.displayName && { title: text(meta.displayName, meta.locales, 'displayName') }),
     ...(meta.summary && { description: text(meta.summary, meta.locales, 'summary') }),
-    author: 'AgnesAI Labs',
+    author: (typeof pkg.author === 'string' ? pkg.author : pkg.author?.name) || 'AgnesAI Labs',
     homepage: url,
     repository: { url },
     metadata: { keywords: pkg.keywords ?? [], labels: [], sortKeys: {} },

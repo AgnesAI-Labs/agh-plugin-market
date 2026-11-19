@@ -34,6 +34,16 @@
 - 如果声明了 `agnes.plugins`，每个插件条目都要有非空的 `export` 和 `apiRange`；有插件条目时，清单还要有 `main` 或 `exports`。自动准入要求每个显式插件条目的 `capabilities` 都是空对象 `{}`；上面的 Bundle 没有插件条目，不必补这个字段。确实需要能力时请如实声明，走人工审核，不要隐瞒权限。
 - 入口、客户端描述文件及其入口和皮肤 CSS、图标等声明的本地资源，都必须在 tag 指向的 Git 提交中。如果入口指向构建产物，请在发版前把所需产物提交到 Git；只存在于本地、GitHub Release 附件或 npm 上的不算。准备插件时，可参阅 AGH 的[插件类型指南](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/choose-a-plugin-type.zh-CN.md)和 [Bundle 指南](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/bundles-and-profiles.zh-CN.md)。
 
+### 将第三方 JS 依赖打包进发版产物
+
+如果插件使用可以打包的纯 JavaScript 依赖，推荐在**发版前**用 esbuild、Rollup 等工具把依赖打进入口产物（例如 `dist/index.js`），而不是等用户安装插件后再下载依赖。
+
+1. 打包入口时，把插件运行所需的第三方 JS 一起打进去。AGH 已提供的 SDK 模块应按 [Host 提供的依赖](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/quickstart.zh-CN.md#host-提供的依赖)保留为外部模块，并按需在 `agnes.hostProvidedExternals` 声明兼容范围。
+2. 让 `main` 或 `exports` 指向打包产物，把产物和第三方许可证或 `NOTICE` 一起提交到要打 tag 的提交。不提交 `node_modules`。AGH 从市场安装时读取固定的 Git 快照，不会因为仓库里有 npm 锁文件就运行 `npm ci`。
+3. 只有确认发版产物不再需要单独加载某个包，才从发版清单的运行时依赖字段中移除它；构建仍需安装的包可以保留在 `devDependencies`。打 tag 前，建议用干净的 AGH 试用环境验证：不借用开发目录的 `node_modules`，确认插件能安装并正常使用。
+
+仍需要独立加载依赖的版本会触发 `RUNTIME_DEPENDENCIES`，继续走人工审核。不要为了通过审核而隐瞒依赖。打包只解决依赖的分发问题：审核仍会扫描产物，其他自动上架规则不变。
+
 ## 2. 在插件版本中授权提交者
 
 需要授权的是**在市场仓库发起 PR 的 GitHub 账号**，不是 Git 提交作者。提交者可以是发布者自己，也可以是受托投稿的其他人。获取这个账号的数字 ID：

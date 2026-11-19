@@ -43,6 +43,16 @@ For your own package, choose the [plugin kind](https://github.com/AgnesAI-Labs/a
 
 Adding the `agh-plugin` topic in the repository's **About** settings is optional. It helps people browsing [GitHub topics](https://github.com/topics/agh-plugin), but does not replace this submission or affect inclusion in the index.
 
+### Bundle third-party JavaScript for release
+
+If your plugin uses pure JavaScript dependencies that can be bundled, use a tool such as esbuild or Rollup **before tagging the release**. Include those dependencies in the output (for example, `dist/index.js`) instead of relying on users to download them after installing the plugin.
+
+1. Bundle the third-party JavaScript your entry needs at runtime. Keep SDK modules supplied by AGH external as described in [Host-provided dependencies](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/quickstart.md#host-provided-dependencies), and declare compatible ranges in `agnes.hostProvidedExternals` as needed.
+2. Point `main` or `exports` at the bundled output. Commit that output and the required third-party licenses or `NOTICE` files in the release commit. Do not commit `node_modules`. AGH installs the pinned Git snapshot from the market; an npm lockfile in the repository does not cause AGH to run `npm ci`.
+3. Remove a package from runtime dependency fields only if the release output no longer needs to load it separately. Packages still needed at build time can stay in `devDependencies`. Before tagging, try installing and using the plugin in a clean AGH environment without your development checkout's `node_modules`.
+
+Releases that still need separately loaded dependencies are flagged as `RUNTIME_DEPENDENCIES` and require manual review. Do not hide dependencies to pass review. Bundling changes how dependencies are delivered: the reviewer still scans the output, and the other automatic-admission rules still apply.
+
 ## 2. Authorize the account that will open the PR
 
 Get the **numeric GitHub account ID** of the person who will click **Create pull request**. With GitHub CLI, sign in as that account and run:

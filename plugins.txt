@@ -2,6 +2,8 @@
 # Each repository holds one AGH plugin package at its root, releases with vX.Y.Z tags
 # and carries the GitHub topic agh-plugin.
 https://github.com/AgnesAI-Labs/agh-app-devboard
+# Smoke test only: the tag deliberately does not exist. Do not merge.
+# pin: https://github.com/AgnesAI-Labs/agh-app-devboard 999991.20261119.1 e79a2040ee323070e4b4437295efa1ddc3bc33fa
 https://github.com/AgnesAI-Labs/agh-app-pharma-gmp
 https://github.com/AgnesAI-Labs/agh-app-aerospace-quality
 https://github.com/lzc970718/agh-plugin-dingtalk

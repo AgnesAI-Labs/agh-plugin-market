@@ -5,8 +5,8 @@
     "zh-cn": "Agnes Harness 官方插件"
   },
   "description": {
-    "en": "Official AGH plugins, one GitHub repository each.",
-    "zh-cn": "AGH 官方插件，每个插件一个 GitHub 仓库。"
+    "en": "The official Agnes Harness plugin catalog. Each plugin is maintained in its own GitHub repository.",
+    "zh-cn": "Agnes Harness 官方插件目录。每个插件均在独立的 GitHub 仓库中维护。"
   },
   "metadata": {
     "categories": {},

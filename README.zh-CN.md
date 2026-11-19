@@ -22,7 +22,17 @@
 
 1. 插件单独放一个 GitHub 仓库，`package.json` 放在仓库根目录，用 `vX.Y.Z` tag 发版。
 2. 给仓库加上 GitHub 话题 `agh-plugin`，这样它会出现在 [github.com/topics/agh-plugin](https://github.com/topics/agh-plugin)。
-3. 想进官方列表，再提交 PR，把仓库地址加进 `plugins.txt`。
+3. 向 `main` 提 PR，同时提交加入仓库地址的 `plugins.txt` 和重新生成的 `docs/index.json`。
+
+更新已收录的仓库时，保留 URL，再在 `plugins.txt` 添加一行 `# pin: https://github.com/OWNER/REPO 1.2.3 FULL_COMMIT_SHA`，填入实际的 40 位小写 Git 提交 SHA，版本不加 `v`。固定值必须和索引一致；替换唯一的已列版本时，若有旧固定行，一并移除。索引中保留的版本不得换绑提交。生成器可能扫入其他仓库的新 tag，审阅差异后再提交；CI 会拒绝未声明的更新。下架时同时移除 URL、对应的固定行和索引条目。
+
+可在仓库根目录本地运行必需检查 `market / validate-index`：
+
+```sh
+node tools/validate-index.mjs "$(git rev-parse origin/main)"
+```
+
+检查覆盖 format 1、包名唯一性、Git 来源和 `plugins.txt` 一致性。发布文件不得超过 2 MiB（2,097,152 字节），这是 AGH daemon 的下载上限。CI 不拉取或运行插件代码，也不验证 tag 是否存在；审核时仍需核对实际发版。
 
 ## 已收录
 

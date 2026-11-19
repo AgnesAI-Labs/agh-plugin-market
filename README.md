@@ -38,16 +38,29 @@ If `main` advances while your PR is open, update your branch before merging and 
 
 ### Release review (report only)
 
-`market / review-release` links to a report for the current PR commit. It scans the PR title, description and proposed commit history for credentials, then checks added or updated indexed releases. It verifies the public `vX.Y.Z` tag and pinned commit, checks the root manifest, declared entry files and assets, and scans the Git tree (including committed build output) with Gitleaks. It does not run the plugin, install dependencies, or recheck unchanged releases.
+`market / review-release` links to a report for the current PR commit. It scans the PR title, description, and proposed commit history for credentials, then checks added or updated indexed releases. It verifies the public `vX.Y.Z` tag and pinned commit, checks the root manifest, declared entry files and assets, and scans text files (including committed build output) and filenames with Gitleaks. It does not run plugins, install dependencies, recheck unchanged releases, or prove that binary media is safe.
 
 | Result | Next step |
 | --- | --- |
 | `passed` | No findings from the configured checks. Continue normal review; this is not a safety or installation guarantee. |
-| `needs-review` | Check flagged publishers, licenses, sensitive capabilities, or content the scanner could not inspect. The initial publisher policy refers repositories outside `AgnesAI-Labs` for manual review; it does not grant trust to organization repositories. |
+| `needs-review` | A maintainer must review the specific findings, such as a publisher outside `AgnesAI-Labs`, licensing, declared capabilities, install hooks, runtime dependencies, or sensitive APIs. Organization ownership is not a guarantee of safety. |
 | `failed` | Fix the indicated release or PR issue and push a new revision. For potential credentials, verify privately and revoke or rotate anything exposed before cleaning the history and submitting a clean release. The report does not include matching values or raw scanner output. |
-| `incomplete` | Check repository/tag accessibility or retry a scanner or network failure. If a batch exceeds 12 changed releases, split the PR. |
+| `incomplete` | Fix missing access or scan coverage, or retry a scanner or network failure. If a batch exceeds 12 changed releases, split the PR. |
 
-This check is advisory. It does not change merge requirements, approve a PR, merge a PR, or publish a release.
+The report itself is advisory. It neither approves nor merges a PR. The separate publisher below uses a fresh review, not the advisory status.
+
+### Automatic merge after maintainer approval
+
+Once enabled, **Market release publisher** checks for approved catalog PRs every ten minutes. It considers only non-draft PRs that change `docs/index.json` and optionally `plugins.txt`, with no changes elsewhere. A maintainer other than the author must approve the **current** PR commit. Pushes require approval of the new commit. The publisher reruns index validation and release review: `passed` and `needs-review` can proceed with human approval; `failed` and `incomplete` cannot. Repository maintenance PRs still use the normal merge flow.
+
+The read-only audit never receives the publishing key. The publisher rechecks the current commit, PR text, approval, and branch protections before requesting a merge for that exact commit. After merging it waits for the [public index](https://agnesai-labs.github.io/agh-plugin-market/index.json) to match the committed bytes. If Pages verification times out, the run fails and reports the merge SHA; check the Pages deployment instead of merging again.
+
+**One-time setup for repository admins**
+
+1. Register an organization-owned GitHub App and install it **only** on `agh-plugin-market`. Grant repository **Contents: Read and write** (Metadata is read-only); disable webhooks and do not add the App to a ruleset bypass list. Keep Pages on `main:/docs`.
+2. Create the `market-publisher` Actions environment, allow deployments only from the `main` branch, and store the App private key as the **environment** secret `MARKET_PUBLISHER_PRIVATE_KEY`. Set the repository Actions variable `MARKET_PUBLISHER_CLIENT_ID` to the App's client ID.
+3. In the `main` PR rules, require at least one approval and dismiss stale approvals when new commits change the diff. This also applies to manual merges. Keep `market / validate-index` required and strict (the PR must be up to date) with GitHub Actions as the source. Do not add bypass actors. The publisher refuses to merge if the approval or index rule is missing.
+4. Use **Market release publisher → Run workflow** on `main` with `dry_run` checked to rehearse. It does not create a merge token or update `main`. Set the repository Actions variable `MARKET_PUBLISHER_ENABLED` to `true` to activate scheduled merges. Remove it or set it to `false` to stop new automatic merges; cancel any active publisher run if stopping urgently.
 
 ## Listed plugins
 

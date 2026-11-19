@@ -38,16 +38,29 @@ node tools/validate-index.mjs "$(git rev-parse origin/main)"
 
 ### 发版审核（仅报告）
 
-`market / review-release` 链接到当前 PR 提交的报告。它扫描 PR 标题、描述和拟合入的提交历史中的凭据，再审核索引里新增或更新的版本。它核对公开的 `vX.Y.Z` tag 与固定提交，检查根清单、声明入口和资源，并用 Gitleaks 扫描 Git 文件树（含已提交的构建产物）。它不运行插件、不安装依赖、不重复审核未改动的版本。
+`market / review-release` 链接到当前 PR 提交的报告。它扫描 PR 标题、描述和拟合入的提交历史中的凭据，再审核索引里新增或更新的版本。它核对公开的 `vX.Y.Z` tag 与固定提交，检查根清单、声明入口和资源，并用 Gitleaks 扫描文本文件（含已提交的构建产物）和文件名。它不运行插件、不安装依赖、不重查未改动的版本，也不保证二进制媒体安全。
 
 | 结果 | 怎么处理 |
 | --- | --- |
 | `passed` | 配置的检查没有发现问题。继续正常审核；这不保证插件安全或可安装。 |
-| `needs-review` | 人工核查被标记的发布者、许可证、敏感能力或未能扫描的内容。初始发布者策略将 `AgnesAI-Labs` 之外的仓库转人工，不表示组织下的仓库自动获得信任。 |
+| `needs-review` | 维护者人工核查报告列出的原因，例如 `AgnesAI-Labs` 之外的发布者、许可证、声明能力、安装脚本、运行时依赖或敏感 API。组织归属不是安全保证。 |
 | `failed` | 修复报告所指的版本或 PR 问题并推送。疑似凭据请私下核查；已泄露的先吊销或轮换，再清理历史、提交干净发版。报告不展示命中值或扫描器原始输出。 |
-| `incomplete` | 检查仓库和 tag 能否访问，或在扫描器、网络恢复后重试。一次超过 12 个变更版本时请拆 PR。 |
+| `incomplete` | 解决访问或扫描覆盖问题，或在扫描器、网络恢复后重试。一次超过 12 个变更版本时请拆 PR。 |
 
-这是建议性报告，不改变合并条件，不批准、合并 PR，也不发布版本。
+报告本身仍是建议性的，不批准也不合并 PR。下方的发布作业会重新审核，不以报告状态作为合并依据。
+
+### 维护者批准后自动合并
+
+启用后，**Market release publisher** 每十分钟检查一次。它只处理非草稿投稿 PR：必须改动 `docs/index.json`，可以同时改动 `plugins.txt`，不能改其他文件。须由作者以外有仓库写权限的维护者批准**当前提交**；推送新提交后须重新批准。发布作业重新验证索引并运行发版审核：`passed` 和 `needs-review` 经人工批准后可合并，`failed` 和 `incomplete` 不自动合并。仓库维护 PR 仍走正常合并流程。
+
+只读审核作业拿不到发布密钥。发布作业在请求合并前再次核对提交、PR 标题和描述、批准状态及分支保护，并将合并锁定到该提交。合并后等待[线上索引](https://agnesai-labs.github.io/agh-plugin-market/index.json)与提交内容逐字节一致。若验证超时，作业会报错并记录合并 SHA；此时应检查 Pages 部署，不要重复合并。
+
+**管理员的一次性配置**
+
+1. 注册由组织拥有的 GitHub App，只安装到 `agh-plugin-market`。赋予仓库 **Contents: Read and write**（Metadata 只读），关闭 webhook，不给 App 规则集绕过权限。Pages 仍从 `main:/docs` 发布。
+2. 创建 Actions 环境 `market-publisher`，只允许部署分支 `main`。将 App 私钥保存为**该环境**的密钥 `MARKET_PUBLISHER_PRIVATE_KEY`；将 App 的 Client ID 写入仓库 Actions 变量 `MARKET_PUBLISHER_CLIENT_ID`。
+3. 在 `main` 的 PR 规则中要求至少一人批准，并在新提交改变 diff 时撤销旧批准。这也约束手动合并。保留 `market / validate-index` 必过、严格要求 PR 跟上 `main`，来源设为 GitHub Actions。不要添加绕过者。批准或索引规则缺失时，发布作业拒绝合并。
+4. 在 `main` 运行 **Market release publisher → Run workflow**，勾选 `dry_run` 演练；不会创建合并令牌或修改 `main`。将仓库 Actions 变量 `MARKET_PUBLISHER_ENABLED` 设为 `true` 后开启定时合并。删除变量或改为 `false` 可阻止新的自动合并；紧急停止时，同时取消正在运行的发布作业。
 
 ## 已收录
 

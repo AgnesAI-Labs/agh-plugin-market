@@ -17,7 +17,7 @@ const messages = {
   RELEASE_SECRET: 'Potential credential in the release tree. Rotate any exposed credential and submit a clean release.',
   SCAN_FAILED: 'Secret scanner did not complete; retry or investigate scanner availability.',
   PR_UNAVAILABLE: 'PR text or history could not be read within the review limits.',
-  PR_BINARY: 'Binary PR changes are not covered by patch scanning; inspect them separately.',
+  PR_BINARY: 'Binary or submodule PR changes are not covered by patch scanning.',
   INVALID_INDEX: 'Index data is missing, over limit or invalid; see the index check.',
   TAG_MISSING: 'The public repository has no matching vX.Y.Z tag. Push the immutable release tag before proposing the version.',
   TAG_UNAVAILABLE: 'Could not fetch the exact release tag. Check that the repository and tag are public, then retry.',
@@ -25,10 +25,14 @@ const messages = {
   MANIFEST: 'Root package.json is missing or does not match the indexed name/version and AGH plugin declaration.',
   ENTRY: 'An entry, client descriptor or declared local asset is missing or invalid. Include the runtime files in the tagged Git tree.',
   LICENSE: 'No license declaration or license file was found. Include licensing information before listing.',
-  COVERAGE: 'Tree exceeds review limits or contains links, submodules, Git LFS pointers or unsupported paths. Inspect delivery manually.',
-  OPAQUE: 'Archive, native or unrecognized binary content needs manual inspection.',
+  COVERAGE: 'Some release paths, objects or entry patterns were not reviewed. Check for links, submodules, Git LFS pointers, unsupported paths or review limits.',
+  OPAQUE: 'Archive, native or unrecognized binary content is outside scan coverage.',
   PUBLISHER: 'The publisher is outside the initial organization policy. Verify publisher identity and package ownership manually.',
-  CAPABILITIES: 'Sensitive or undeclared capabilities, install scripts, runtime dependencies, or sensitive runtime APIs need manual review.',
+  CAPABILITY_DECLARATION: 'A plugin does not declare capabilities in the expected object format.',
+  CAPABILITY_REVIEW: 'A plugin declares sensitive capabilities that need manual review.',
+  INSTALL_HOOKS: 'Package install lifecycle scripts need manual review.',
+  RUNTIME_DEPENDENCIES: 'Package runtime dependencies need manual review.',
+  RUNTIME_APIS: 'Source references sensitive runtime APIs that need manual review.',
   LIMIT: 'Too many release candidates for one review run. Split the PR into smaller batches.',
   INTERNAL: 'Review could not complete. Retry or inspect the reviewer environment.',
 }
@@ -61,40 +65,66 @@ function readIndex(ref) {
   })
 }
 
-function scan(path, cwd) {
-  // Suppress ALL scanner output; redaction alone does not cover filenames, context or patches.
+function scan(row, path, cwd, secretCode) {
+  // Never emit scanner diagnostics or findings, even redacted. Some skips and
+  // read errors are only logged, not returned as nonzero exits by Gitleaks.
   const result = run('gitleaks', ['dir', '--config', scannerConfig, '--gitleaks-ignore-path', join(cwd, 'empty-gitleaksignore'),
-    '--ignore-gitleaks-allow', '--redact=100', '--exit-code=21', '--timeout=45', path], { cwd, stdio: 'ignore' })
-  if (result.status === 0 && !result.error) return 'clean'
-  return result.status === 21 && !result.error ? 'secret' : 'incomplete'
+    '--ignore-gitleaks-allow', '--redact=100', '--exit-code=21', '--timeout=45', '--no-color', '--no-banner',
+    '--log-level=debug', path], { cwd, stdio: ['ignore', 'ignore', 'pipe'] })
+  const diagnostics = result.stderr?.toString() ?? ''
+  if (result.status === 21 || /\b[1-9]\d* leaks found in partial scan\b/.test(diagnostics)) finding(row, secretCode, 'failed')
+  if (result.error || ![0, 21].includes(result.status) ||
+      /\b(?:ERR |FTL |skipping (?!empty file\b)|issue reading file)/.test(diagnostics)) finding(row, 'SCAN_FAILED', 'incomplete')
 }
 
 function finding(row, code, state) {
   if (!row.findings.some((entry) => entry.code === code)) row.findings.push({ code, state })
 }
 
-function checkedScan(row, path, cwd, secretCode) {
-  const result = scan(path, cwd)
-  if (result === 'secret') finding(row, secretCode, 'failed')
-  if (result === 'incomplete') finding(row, 'SCAN_FAILED', 'incomplete')
+function stage(row, path, data, code) {
+  try {
+    writeFileSync(path, data, { flag: 'wx' })
+    return true
+  } catch {
+    finding(row, code, 'incomplete')
+    return false
+  }
 }
 
 function reviewPr(row, base, head, eventFile, root) {
+  const dir = join(root, 'pr')
+  try { mkdirSync(dir) } catch { return finding(row, 'PR_UNAVAILABLE', 'incomplete') }
   try {
     const event = JSON.parse(readFileSync(eventFile))
     const pr = event.pull_request
-    if (pr?.head?.sha !== head || pr?.base?.sha !== base) throw new Error('event')
-    const dir = join(root, 'pr')
-    mkdirSync(dir)
-    writeFileSync(join(dir, 'description.txt'), `${pr.title ?? ''}\n${pr.body ?? ''}`)
-    const patch = output(git(['log', '--format=medium', '--full-history', '-m', '-p', '--no-ext-diff', '--no-textconv', '--no-notes', '--no-color', `${base}..${head}`, '--'], { maxBuffer: 8 * MiB }))
-    writeFileSync(join(dir, 'history.patch'), patch)
-    checkedScan(row, dir, root, 'PR_SECRET')
-    const stats = output(git(['log', '--format=', '--full-history', '-m', '--numstat', '-z', '--no-ext-diff', '--no-textconv', `${base}..${head}`, '--']))
-    if (stats.includes(Buffer.from('-\t-\t'))) finding(row, 'PR_BINARY', 'needs-review')
+    if (pr?.head?.sha !== head || pr?.base?.sha !== base || typeof pr.title !== 'string' ||
+        (pr.body != null && typeof pr.body !== 'string')) throw new Error('event')
+    stage(row, join(dir, 'description.txt'), `\n${pr.title}\n${pr.body ?? ''}`, 'PR_UNAVAILABLE')
   } catch {
     finding(row, 'PR_UNAVAILABLE', 'incomplete')
   }
+
+  const scope = ['--full-history', '--diff-merges=separate', '--no-renames', '--no-ext-diff', '--no-textconv', '--no-notes',
+    '--no-color', '--ignore-submodules=none', '--submodule=short', `${base}..${head}`, '--']
+  const patch = git(['log', '--format=medium', '-p', ...scope], { maxBuffer: 8 * MiB })
+  if (patch.status !== 0 || patch.error) finding(row, 'PR_UNAVAILABLE', 'incomplete')
+  if (patch.stdout?.length) {
+    if (!isUtf8(patch.stdout) || patch.stdout.includes(0)) finding(row, 'PR_BINARY', 'incomplete')
+    stage(row, join(dir, 'history.patch'), patch.stdout, 'PR_UNAVAILABLE')
+  }
+  const stats = git(['log', '--format=', '--raw', '--numstat', '-z', ...scope])
+  if (stats.status !== 0 || stats.error) finding(row, 'PR_UNAVAILABLE', 'incomplete')
+  let rawName = false
+  for (const entry of (stats.stdout?.toString() ?? '').split('\0')) {
+    if (rawName) { rawName = false; continue }
+    const raw = /^:([0-7]{6}) ([0-7]{6}) /.exec(entry)
+    if (entry.startsWith('-\t-\t') || raw?.[1] === '160000' || raw?.[2] === '160000') {
+      finding(row, 'PR_BINARY', 'incomplete')
+      break
+    }
+    rawName = raw !== null
+  }
+  scan(row, dir, root, 'PR_SECRET')
 }
 
 function safePath(path) {
@@ -104,62 +134,104 @@ function safePath(path) {
 }
 
 function readTree(repo, commit, row) {
-  const list = output(git(['-C', repo, 'ls-tree', '-rlz', commit]))
-  if (!isUtf8(list)) throw new Error('coverage')
+  const list = git(['-C', repo, 'ls-tree', '-rlz', commit])
+  let complete = list.status === 0 && !list.error
   const files = new Map()
+  const paths = new Map()
+  // Paths found in Git map to their staged text, null for binary, or undefined
+  // when their content is unavailable to structural checks.
   let total = 0
-  for (const line of list.toString('utf8').split('\0')) {
-    if (!line) continue
+  const data = list.stdout ?? Buffer.alloc(0)
+  for (let start = 0; start < data.length;) {
+    const end = data.indexOf(0, start)
+    if (end < 0) { complete = false; break }
+    const entry = data.subarray(start, end)
+    start = end + 1
+    if (!isUtf8(entry)) { finding(row, 'COVERAGE', 'incomplete'); continue }
+    const line = entry.toString()
+    if (!line.includes('\t')) { complete = false; continue }
     const tab = line.indexOf('\t')
     const match = /^100(?:644|755) blob ([0-9a-f]{40}) +([0-9]+)$/.exec(line.slice(0, tab))
     const path = line.slice(tab + 1)
-    if (!match || !safePath(path) || /(?:^|\/)(?:node_modules|fixtures\/out)(?:\/|$)/.test(path)) {
-      finding(row, 'COVERAGE', 'needs-review')
+    paths.set(path, undefined)
+    const size = Number(match?.[2])
+    if (!match || !safePath(path) || /(?:^|\/)(?:node_modules|fixtures\/out)(?:\/|$)/.test(path) ||
+        size > 8 * MiB || total + size > 40 * MiB || files.size >= 4_000) {
+      finding(row, 'COVERAGE', 'incomplete')
       continue
     }
-    const size = Number(match[2]); total += size
-    if (size > 8 * MiB || total > 40 * MiB || files.size >= 4_000) throw new Error('coverage')
     files.set(path, { oid: match[1], size })
+    total += size
   }
-  return { files, total }
+  if (!complete) finding(row, 'COVERAGE', 'incomplete')
+  return { files, paths, total, complete }
 }
 
 const codeFile = /\.(?:[cm]?[jt]sx?)$/i
 const sensitiveCode = /(?:\bprocess\.env\b|['"](?:node:)?(?:child_process|net|tls|dgram|fs\/promises)['"]|\b(?:eval|fetch)\s*\()/
 const opaqueFormat = /\.(?:zip|gz|xz|bz2|tar|7z|rar|tgz|jar|asar|pdf|docx|wasm|node|exe|dll|so|dylib|bin)$/i
-const knownMedia = /\.(?:png|jpe?g|gif|webp|ico|woff2?|ttf)$/i
+const mediaHeaders = new Map(Object.entries({
+  png: ['89504e470d0a1a0a'], jpg: ['ffd8ff'], jpeg: ['ffd8ff'], gif: ['474946383761', '474946383961'],
+  ico: ['00000100'], woff: ['774f4646'], woff2: ['774f4632'], ttf: ['00010000', '74727565'],
+}).map(([ext, headers]) => [ext, headers.map((hex) => Buffer.from(hex, 'hex'))]))
+const riff = Buffer.from('RIFF')
+const webp = Buffer.from('WEBP')
+
+function knownMedia(path, data) {
+  const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
+  if (ext === 'webp') return data.subarray(0, 4).equals(riff) && data.subarray(8, 12).equals(webp)
+  return mediaHeaders.get(ext)?.some((header) => data.subarray(0, header.length).equals(header))
+}
+
+// Keep the suffixes needed by the pinned scanner's path-qualified rules, but
+// never let a contributor path make Gitleaks skip text via its global allowlist.
+const ruleSuffix = /(?:\.(?:php|tf|hcl|ya?ml|p12|pfx)|nuget\.config)$/i
+
 function materialize(repo, tree, dir, row) {
   const requests = [...tree.files.values()].map((item) => item.oid).join('\n')
-  const blobs = output(git(['-C', repo, 'cat-file', '--batch'], {
-    input: requests ? `${requests}\n` : '', maxBuffer: tree.total + MiB,
-  }))
-  const paths = new Set()
+  if (!requests) return
+  const result = git(['-C', repo, 'cat-file', '--batch'], { input: `${requests}\n`, maxBuffer: tree.total + MiB })
+  if (result.status !== 0 || result.error) finding(row, 'COVERAGE', 'incomplete')
+  const blobs = result.stdout ?? Buffer.alloc(0)
   let cursor = 0
+  let i = 0
   for (const [path, { oid, size }] of tree.files) {
     const end = blobs.indexOf(10, cursor)
-    if (end < 0 || blobs.toString('ascii', cursor, end) !== `${oid} blob ${size}` || blobs[end + size + 1] !== 10) throw new Error('blob')
+    if (end < 0) { finding(row, 'COVERAGE', 'incomplete'); break }
+    const header = blobs.toString('ascii', cursor, end)
+    if (header === `${oid} missing`) {
+      finding(row, 'COVERAGE', 'incomplete')
+      cursor = end + 1
+      continue
+    }
+    if (header !== `${oid} blob ${size}` || blobs[end + size + 1] !== 10) {
+      finding(row, 'COVERAGE', 'incomplete')
+      break
+    }
     const data = blobs.subarray(end + 1, end + 1 + size)
     cursor = end + size + 2
     const text = isUtf8(data) && !data.includes(0)
-    if (text && data.subarray(0, 80).toString('utf8').startsWith('version https://git-lfs.github.com/spec/v1')) {
-      finding(row, 'COVERAGE', 'needs-review')
+    if (opaqueFormat.test(path) || (!text && !knownMedia(path, data))) finding(row, 'OPAQUE', 'incomplete')
+    if (!text) {
+      tree.paths.set(path, null)
       continue
     }
-    if (opaqueFormat.test(path) || (!text && !knownMedia.test(path))) finding(row, 'OPAQUE', 'needs-review')
-    if (text && codeFile.test(path) && sensitiveCode.test(data.toString('utf8'))) finding(row, 'CAPABILITIES', 'needs-review')
-    const target = join(dir, path)
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, data, { flag: 'wx' })
-    paths.add(path)
+    const lfs = data.subarray(0, 80).toString().startsWith('version https://git-lfs.github.com/spec/v1')
+    if (lfs) finding(row, 'COVERAGE', 'incomplete')
+    if (codeFile.test(path) && sensitiveCode.test(data.toString())) finding(row, 'RUNTIME_APIS', 'needs-review')
+    const target = join(dir, `file-${i++}${ruleSuffix.exec(path)?.[0] ?? '.txt'}`)
+    if (stage(row, target, data, 'COVERAGE') && !lfs) tree.paths.set(path, target)
   }
-  return paths
+  if (cursor !== blobs.length) finding(row, 'COVERAGE', 'incomplete')
 }
 
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const nonempty = (value) => Array.isArray(value) ? value.length > 0 : record(value) ? Object.keys(value).length > 0 : Boolean(value)
 const risky = ['network', 'network.publicRead', 'exec', 'secrets', 'credentials', 'managedServices', 'childAgents', 'subagent']
-function checkManifest(dir, paths, candidate, row) {
-  const json = (path) => JSON.parse(readFileSync(join(dir, path)))
+function checkManifest({ paths, complete }, candidate, row) {
+  const json = (path) => JSON.parse(readFileSync(paths.get(path)))
+  const unavailable = (path) => paths.get(path) === undefined && (!complete || paths.has(path))
+  if (unavailable('package.json')) return
   let pkg
   try { pkg = json('package.json') } catch { /* Report without echoing the manifest. */ }
   const agnes = pkg?.agnes
@@ -173,11 +245,11 @@ function checkManifest(dir, paths, candidate, row) {
   }
   const entries = (value, prefix = '') => {
     const relative = typeof value === 'string' ? value.replace(/^\.\//, '') : undefined
-    if (!safePath(relative) || !paths.has(prefix + relative)) finding(row, 'ENTRY', 'failed')
-    return relative && safePath(relative) && paths.has(prefix + relative) ? prefix + relative : undefined
+    if (safePath(relative) && paths.has(prefix + relative)) return prefix + relative
+    if (!safePath(relative) || complete) finding(row, 'ENTRY', 'failed')
   }
   const exported = (value) => {
-    if (typeof value === 'string' && value.includes('*')) finding(row, 'COVERAGE', 'needs-review')
+    if (typeof value === 'string' && value.includes('*')) finding(row, 'COVERAGE', 'incomplete')
     else if (Array.isArray(value) || record(value)) Object.values(value).forEach(exported)
     else if (value !== null) entries(value)
   }
@@ -187,7 +259,7 @@ function checkManifest(dir, paths, candidate, row) {
   if (agnes.clientDescriptors !== undefined && !Array.isArray(agnes.clientDescriptors)) finding(row, 'ENTRY', 'failed')
   for (const item of Array.isArray(agnes.clientDescriptors) ? agnes.clientDescriptors : []) {
     const path = entries(item?.path)
-    if (!path) continue
+    if (!path || unavailable(path)) continue
     try {
       const descriptor = json(path)
       if (!descriptor?.client && !descriptor?.skins?.length) throw new Error('descriptor')
@@ -199,11 +271,19 @@ function checkManifest(dir, paths, candidate, row) {
   for (const asset of [agnes.metadata?.icon, agnes.application?.brand?.mark, agnes.application?.brand?.favicon]) {
     if (asset !== undefined) entries(asset)
   }
-  if (typeof pkg.license !== 'string' || !pkg.license.trim() || ![...paths].some((file) => /^(?:licen[cs]e|copying)(?:[.-]|$)/i.test(file) && !file.includes('/'))) finding(row, 'LICENSE', 'needs-review')
-  if (['preinstall', 'install', 'postinstall', 'prepare'].some((hook) => Object.hasOwn(pkg.scripts ?? {}, hook)) ||
-      ['dependencies', 'optionalDependencies', 'bundledDependencies', 'bundleDependencies'].some((key) => nonempty(pkg[key])) ||
-      agnes.plugins?.some(({ capabilities }) => !record(capabilities) || risky.some((key) => nonempty(capabilities[key])) || nonempty(capabilities.filesystem?.write))) {
-    finding(row, 'CAPABILITIES', 'needs-review')
+  if (typeof pkg.license !== 'string' || !pkg.license.trim() || ![...paths.keys()].some((file) => /^(?:licen[cs]e|copying)(?:[.-]|$)/i.test(file) && !file.includes('/'))) finding(row, 'LICENSE', 'needs-review')
+  if (agnes.plugins?.some(({ capabilities }) => !record(capabilities))) {
+    finding(row, 'CAPABILITY_DECLARATION', 'needs-review')
+  }
+  if (agnes.plugins?.some(({ capabilities }) => record(capabilities) &&
+      (risky.some((key) => nonempty(capabilities[key])) || nonempty(capabilities.filesystem?.write)))) {
+    finding(row, 'CAPABILITY_REVIEW', 'needs-review')
+  }
+  if (['preinstall', 'install', 'postinstall', 'prepare'].some((hook) => Object.hasOwn(pkg.scripts ?? {}, hook))) {
+    finding(row, 'INSTALL_HOOKS', 'needs-review')
+  }
+  if (['dependencies', 'optionalDependencies', 'bundledDependencies', 'bundleDependencies'].some((key) => nonempty(pkg[key]))) {
+    finding(row, 'RUNTIME_DEPENDENCIES', 'needs-review')
   }
 }
 
@@ -211,8 +291,7 @@ function reviewRelease(candidate, row, root) {
   if (!candidate.repo.startsWith('agnesai-labs/')) finding(row, 'PUBLISHER', 'needs-review')
   const repo = join(root, 'git')
   const payload = join(root, 'payload')
-  const dir = join(payload, 'tree')
-  mkdirSync(dir, { recursive: true })
+  mkdirSync(payload, { recursive: true })
   output(git(['init', '--bare', '--template=', repo]))
   const ref = `refs/tags/v${candidate.version}`
   const remote = `https://github.com/${candidate.repo}.git`
@@ -220,12 +299,11 @@ function reviewRelease(candidate, row, root) {
   if (result.status !== 0 && result.stderr?.includes(Buffer.from("couldn't find remote ref "))) return finding(row, 'TAG_MISSING', 'failed')
   if (result.status !== 0 || result.error) return finding(row, 'TAG_UNAVAILABLE', 'incomplete')
   if (output(git(['-C', repo, 'rev-parse', '--verify', 'FETCH_HEAD^{commit}'])).toString().trim() !== candidate.commit) return finding(row, 'TAG_MISMATCH', 'failed')
-  let tree
-  try { tree = readTree(repo, candidate.commit, row) } catch { return finding(row, 'COVERAGE', 'needs-review') }
-  const paths = materialize(repo, tree, dir, row)
-  writeFileSync(join(payload, 'paths.txt'), [...tree.files.keys()].join('\n'))
-  checkedScan(row, payload, dirname(root), 'RELEASE_SECRET')
-  checkManifest(dir, paths, candidate, row)
+  const tree = readTree(repo, candidate.commit, row)
+  materialize(repo, tree, payload, row)
+  stage(row, join(payload, 'paths.txt'), `\n${[...tree.paths.keys()].join('\n')}`, 'COVERAGE')
+  scan(row, payload, dirname(root), 'RELEASE_SECRET')
+  checkManifest(tree, candidate, row)
 }
 
 const stateOf = (findings) => ['failed', 'incomplete', 'needs-review'].find((state) => findings.some((entry) => entry.state === state)) ?? 'passed'
@@ -247,7 +325,7 @@ try {
     candidates = readIndex(head).filter((row) => !previous.has(key(row)))
   } catch { finding(pr, 'INVALID_INDEX', 'failed') }
   if (candidates?.length > 12) finding(pr, 'LIMIT', 'incomplete')
-  else for (const [i, candidate] of (candidates ?? []).entries()) {
+  for (const [i, candidate] of (candidates ?? []).slice(0, 12).entries()) {
     const row = { subject: `Index release ${i + 1}`, commit: candidate.commit, findings: [] }
     report.push(row)
     const workspace = join(root, `release-${i}`)
@@ -259,7 +337,7 @@ try {
   rmSync(root, { recursive: true, force: true })
 }
 const outcome = stateOf(report.flatMap((row) => row.findings))
-console.log(`## Release review: ${outcome}\n\nReport only; this check is not a merge gate or proof of safety.\n\nRevision: \`${head}\`\n`)
+console.log(`## Release review: ${outcome}\n\nReport only; this check is not a merge gate or proof of safety.\n\nSecret checks cover PR text and patches, release source/text and filenames. Recognized release media are not subject to binary content scanning; opaque content makes coverage incomplete.\n\nRevision: \`${head}\`\n`)
 if (report.length === 1) console.log('No release trees were reviewed.\n')
 for (const { subject, commit, findings } of report) {
   console.log(`- **${subject}**${commit ? ` (\`${commit}\`)` : ''}: ${stateOf(findings)}`)

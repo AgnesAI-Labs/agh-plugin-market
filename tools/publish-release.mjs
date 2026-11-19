@@ -124,7 +124,7 @@ function readIndex(ref) {
 
 function sourceList(ref) {
   return String(checked(git(['cat-file', 'blob', `${ref}:plugins.txt`], { maxBuffer: maxIndexBytes + 1 }),
-    'Could not read the pinned source list.')).split('\\n').filter((line) => !line.trimStart().startsWith('# pin:'))
+    'Could not read the pinned source list.')).split(/\r?\n/).filter((line) => !line.trimStart().startsWith('# pin:'))
 }
 
 function output(key, value) {

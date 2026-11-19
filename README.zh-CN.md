@@ -34,6 +34,8 @@ node tools/validate-index.mjs "$(git rev-parse origin/main)"
 
 检查覆盖 format 1、包名唯一性、Git 来源和 `plugins.txt` 一致性。发布文件不得超过 2 MiB（2,097,152 字节），这是 AGH daemon 的下载上限。CI 不拉取或运行插件代码，也不验证 tag 是否存在；审核时仍需核对实际发版。
 
+如果 PR 审核期间 `main` 有新提交，合并前先更新分支，等待检查在新提交上通过。
+
 ## 已收录
 
 | 仓库 | 包名 |

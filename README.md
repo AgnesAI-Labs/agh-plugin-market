@@ -34,6 +34,8 @@ node tools/validate-index.mjs "$(git rev-parse origin/main)"
 
 The check validates format 1, unique package names, Git sources, and consistency with `plugins.txt`. The published file must not exceed 2 MiB (2,097,152 bytes), the AGH daemon's download limit. CI does not fetch or execute plugin code and does not verify that a release tag exists; review still needs to verify the intended release.
 
+If `main` advances while your PR is open, update your branch before merging and let the check run on the new head.
+
 ## Listed plugins
 
 | Repository | Package |

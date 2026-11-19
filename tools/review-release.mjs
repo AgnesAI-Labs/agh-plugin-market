@@ -4,11 +4,11 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { authorizedSubmitter, canonicalRepository, publicRepository } from './public-submission.mjs'
 
 const MiB = 1024 * 1024
 const sha = /^[0-9a-f]{40}$/
 const version = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/
-const githubUrl = /^https:\/\/github\.com\/([a-z0-9][a-z0-9-]{0,38})\/([a-z0-9_.-]{1,100})$/i
 const gitOptions = ['-c', 'core.hooksPath=/dev/null', '-c', 'http.followRedirects=false', '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always']
 const scannerConfig = fileURLToPath(new URL('./review-gitleaks.toml', import.meta.url))
 const report = []
@@ -22,12 +22,15 @@ const messages = {
   TAG_MISSING: 'The public repository has no matching vX.Y.Z tag. Push the immutable release tag before proposing the version.',
   TAG_UNAVAILABLE: 'Could not fetch the exact release tag. Check that the repository and tag are public, then retry.',
   TAG_MISMATCH: 'The release tag does not resolve to the indexed commit. Update the proposal to the intended immutable release.',
-  MANIFEST: 'Root package.json is missing or does not match the indexed name/version and AGH plugin declaration.',
+  MANIFEST: 'Root package.json is missing or does not match the indexed name/version and AGH plugin declaration. Use distinct documented agnes.provides labels.',
   ENTRY: 'An entry, client descriptor or declared local asset is missing or invalid. Include the runtime files in the tagged Git tree.',
   LICENSE: 'No license declaration or license file was found. Include licensing information before listing.',
   COVERAGE: 'Some release paths, objects or entry patterns were not reviewed. Check for links, submodules, Git LFS pointers, unsupported paths or review limits.',
   OPAQUE: 'Archive, native or unrecognized binary content is outside scan coverage.',
-  PUBLISHER: 'The publisher is outside the initial organization policy. Verify publisher identity and package ownership manually.',
+  PUBLISHER: 'An existing external listing does not use its repository owner’s public namespace. Verify the publisher manually.',
+  PUBLIC_SCOPE: 'A new listing must be named @owner/name using its GitHub repository owner’s lowercase, non-reserved namespace.',
+  PUBLIC_PROOF: 'The tagged release must include a root agh.market.json with the matching GitHub repository URL and 1–32 unique positive integer account IDs. For PRs, the author’s ID must be listed.',
+  PUBLIC_IDENTITY: 'The PR author’s numeric GitHub account ID was unavailable. Review could not verify release delegation.',
   CAPABILITY_DECLARATION: 'A plugin does not declare capabilities in the expected object format.',
   CAPABILITY_REVIEW: 'A plugin declares sensitive capabilities that need manual review.',
   INSTALL_HOOKS: 'Package install lifecycle scripts need manual review.',
@@ -58,9 +61,9 @@ function readIndex(ref) {
     if (!row || typeof row.name !== 'string' || !Array.isArray(row.versions) || row.versions.length === 0) throw new Error('index')
     return row.versions.map((entry) => {
       const { url, commit, type } = entry?.source ?? {}
-      const match = typeof url === 'string' && githubUrl.exec(url)
-      if (type !== 'git' || !match || /^\.{1,2}$|\.git$/i.test(match[2]) || typeof commit !== 'string' || !sha.test(commit) || typeof entry.version !== 'string' || !version.test(entry.version) || entry.version.length > 128) throw new Error('index')
-      return { name: row.name, repo: `${match[1]}/${match[2]}`.toLowerCase(), commit, version: entry.version }
+      const repo = canonicalRepository(url)
+      if (type !== 'git' || !repo || typeof commit !== 'string' || !sha.test(commit) || typeof entry.version !== 'string' || !version.test(entry.version) || entry.version.length > 128) throw new Error('index')
+      return { name: row.name, repo, url, commit, version: entry.version }
     })
   })
 }
@@ -93,12 +96,18 @@ function stage(row, path, data, code) {
 
 function reviewPr(row, base, head, eventFile, root) {
   const dir = join(root, 'pr')
-  try { mkdirSync(dir) } catch { return finding(row, 'PR_UNAVAILABLE', 'incomplete') }
+  let actor = null
+  try { mkdirSync(dir) } catch {
+    finding(row, 'PR_UNAVAILABLE', 'incomplete')
+    return null
+  }
   try {
     const event = JSON.parse(readFileSync(eventFile))
     const pr = event.pull_request
     if (pr?.head?.sha !== head || pr?.base?.sha !== base || typeof pr.title !== 'string' ||
         (pr.body != null && typeof pr.body !== 'string')) throw new Error('event')
+    const id = pr.user?.id
+    if (Number.isSafeInteger(id) && id > 0) actor = id
     stage(row, join(dir, 'description.txt'), `\n${pr.title}\n${pr.body ?? ''}`, 'PR_UNAVAILABLE')
   } catch {
     finding(row, 'PR_UNAVAILABLE', 'incomplete')
@@ -125,6 +134,7 @@ function reviewPr(row, base, head, eventFile, root) {
     rawName = raw !== null
   }
   scan(row, dir, root, 'PR_SECRET')
+  return actor
 }
 
 function safePath(path) {
@@ -228,6 +238,7 @@ function materialize(repo, tree, dir, row) {
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const nonempty = (value) => Array.isArray(value) ? value.length > 0 : record(value) ? Object.keys(value).length > 0 : Boolean(value)
 const risky = ['network', 'network.publicRead', 'exec', 'secrets', 'credentials', 'managedServices', 'childAgents', 'subagent']
+const provides = new Set(['tool', 'loop', 'model-adapter', 'mcp', 'skills', 'ui', 'bundle', 'service'])
 function checkManifest({ paths, complete }, candidate, row) {
   const json = (path) => JSON.parse(readFileSync(paths.get(path)))
   const unavailable = (path) => paths.get(path) === undefined && (!complete || paths.has(path))
@@ -236,7 +247,8 @@ function checkManifest({ paths, complete }, candidate, row) {
   try { pkg = json('package.json') } catch { /* Report without echoing the manifest. */ }
   const agnes = pkg?.agnes
   if (pkg?.name !== candidate.name || pkg?.version !== candidate.version || !record(agnes) ||
-      !Array.isArray(agnes.provides) || !agnes.provides.length || agnes.provides.some((kind) => typeof kind !== 'string') ||
+      !Array.isArray(agnes.provides) || !agnes.provides.length || agnes.provides.length > provides.size ||
+      agnes.provides.some((kind) => !provides.has(kind)) || new Set(agnes.provides).size !== agnes.provides.length ||
       agnes.extensions !== undefined || paths.has('agnes.extension.json') ||
       (agnes.plugins !== undefined && (!Array.isArray(agnes.plugins) || agnes.plugins.some((plugin) =>
         !record(plugin) || typeof plugin.export !== 'string' || !plugin.export || typeof plugin.apiRange !== 'string' || !plugin.apiRange)))) {
@@ -287,8 +299,24 @@ function checkManifest({ paths, complete }, candidate, row) {
   }
 }
 
-function reviewRelease(candidate, row, root) {
-  if (!candidate.repo.startsWith('agnesai-labs/')) finding(row, 'PUBLISHER', 'needs-review')
+function checkPublicProof(paths, url, actor, row) {
+  let declaration
+  const proof = paths.get('agh.market.json')
+  if (proof) {
+    try { declaration = JSON.parse(readFileSync(proof)) } catch { /* Report without echoing the declaration. */ }
+  }
+  if (!authorizedSubmitter(declaration, url, actor)) finding(row, 'PUBLIC_PROOF', 'failed')
+}
+
+function reviewRelease(candidate, row, root, firstListing, actor) {
+  const publicSubmission = publicRepository(candidate.name, candidate.url)
+  if (publicSubmission) {
+    if (actor === null) finding(row, 'PUBLIC_IDENTITY', 'incomplete')
+  } else if (firstListing) {
+    finding(row, 'PUBLIC_SCOPE', 'failed')
+  } else if (!candidate.repo.startsWith('agnesai-labs/')) {
+    finding(row, 'PUBLISHER', 'needs-review')
+  }
   const repo = join(root, 'git')
   const payload = join(root, 'payload')
   mkdirSync(payload, { recursive: true })
@@ -303,6 +331,7 @@ function reviewRelease(candidate, row, root) {
   materialize(repo, tree, payload, row)
   stage(row, join(payload, 'paths.txt'), `\n${[...tree.paths.keys()].join('\n')}`, 'COVERAGE')
   scan(row, payload, dirname(root), 'RELEASE_SECRET')
+  if (publicSubmission && actor !== null) checkPublicProof(tree.paths, candidate.url, actor, row)
   checkManifest(tree, candidate, row)
 }
 
@@ -315,21 +344,27 @@ if ((base !== '--all' && !sha.test(base ?? '')) || !sha.test(head ?? '') || (bas
 const root = mkdtempSync(join(tmpdir(), 'market-release-'))
 try {
   writeFileSync(join(root, 'empty-gitleaksignore'), '')
-  const pr = { subject: base === '--all' ? 'Catalog' : 'Pull request', findings: [] }
+  const all = base === '--all'
+  const pr = { subject: all ? 'Catalog' : 'Pull request', findings: [] }
   report.push(pr)
-  if (base !== '--all') reviewPr(pr, base, head, event, root)
+  const actor = all ? undefined : reviewPr(pr, base, head, event, root)
+  const listingKey = ({ name, repo }) => JSON.stringify([name, repo])
+  let previousListings
   let candidates
   try {
     const key = ({ name, repo, version, commit }) => JSON.stringify([name, repo, version, commit])
-    const previous = new Set((base === '--all' ? [] : readIndex(base)).map(key))
-    candidates = readIndex(head).filter((row) => !previous.has(key(row)))
+    const previous = all ? [] : readIndex(base)
+    previousListings = new Set(previous.map(listingKey))
+    const previousReleases = new Set(previous.map(key))
+    candidates = readIndex(head).filter((row) => !previousReleases.has(key(row)))
   } catch { finding(pr, 'INVALID_INDEX', 'failed') }
   if (candidates?.length > 12) finding(pr, 'LIMIT', 'incomplete')
   for (const [i, candidate] of (candidates ?? []).slice(0, 12).entries()) {
     const row = { subject: `Index release ${i + 1}`, commit: candidate.commit, findings: [] }
     report.push(row)
     const workspace = join(root, `release-${i}`)
-    try { reviewRelease(candidate, row, workspace) }
+    const firstListing = !all && !previousListings.has(listingKey(candidate))
+    try { reviewRelease(candidate, row, workspace, firstListing, actor) }
     catch { finding(row, 'INTERNAL', 'incomplete') }
     finally { rmSync(workspace, { recursive: true, force: true }) }
   }

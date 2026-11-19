@@ -1,6 +1,9 @@
 name: Market release publisher
 
 on:
+  workflow_run:
+    workflows: [Market index]
+    types: [completed]
   schedule:
     - cron: '3,13,23,33,43,53 * * * *'
   workflow_dispatch:
@@ -22,6 +25,9 @@ jobs:
     if: >-
       github.repository == 'AgnesAI-Labs/agh-plugin-market' &&
       github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.event == 'pull_request_target' &&
+        github.event.workflow_run.conclusion == 'success')) &&
       (vars.MARKET_PUBLISHER_ENABLED == 'true' ||
        (github.event_name == 'workflow_dispatch' && inputs.dry_run == true))
     runs-on: ubuntu-latest
@@ -29,9 +35,23 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      pages: read
     outputs:
       plan: ${{ steps.audit.outputs.plan }}
     steps:
+      - name: Require workflow-based Pages before enabling a merge
+        if: github.event_name != 'workflow_dispatch' || inputs.dry_run == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type); then
+            echo '::error::Could not read GitHub Pages settings; no merge attempted.'
+            exit 1
+          fi
+          if [[ $build_type != workflow ]]; then
+            echo '::error::Set the GitHub Pages source to GitHub Actions before merging releases.'
+            exit 1
+          fi
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.sha }}
@@ -55,14 +75,15 @@ jobs:
       github.ref == 'refs/heads/main' &&
       vars.MARKET_PUBLISHER_ENABLED == 'true' &&
       needs.review.outputs.plan != '' &&
-      (github.event_name == 'schedule' ||
-       (github.event_name == 'workflow_dispatch' && inputs.dry_run == false))
+      (github.event_name != 'workflow_dispatch' || inputs.dry_run == false)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: market-publisher
     permissions:
-      contents: read
+      contents: write
       pull-requests: read
+    outputs:
+      merged_sha: ${{ steps.merge.outputs.merged_sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -71,25 +92,21 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
-      - name: Mint repository-scoped publisher token
-        id: publisher-token
-        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
-        with:
-          client-id: ${{ vars.MARKET_PUBLISHER_CLIENT_ID }}
-          private-key: ${{ secrets.MARKET_PUBLISHER_PRIVATE_KEY }}
-          owner: AgnesAI-Labs
-          repositories: agh-plugin-market
-          permission-contents: write
-      - name: Revalidate plan and merge the approved release
+      - name: Revalidate the plan and merge the audited revision
         id: merge
         env:
           GH_TOKEN: ${{ github.token }}
-          MARKET_PUBLISHER_TOKEN: ${{ steps.publisher-token.outputs.token }}
+          GIT_TERMINAL_PROMPT: '0'
           PLAN: ${{ needs.review.outputs.plan }}
         run: node tools/publish-release.mjs merge "$PLAN"
-      - name: Verify the merged release reached legacy Pages
-        if: steps.merge.outputs.merged_sha != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          MERGED_SHA: ${{ steps.merge.outputs.merged_sha }}
-        run: node tools/publish-release.mjs verify-pages "$MERGED_SHA"
+
+  deploy-pages:
+    needs: publish
+    if: needs.publish.outputs.merged_sha != ''
+    uses: ./.github/workflows/market-pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    with:
+      required_merge_sha: ${{ needs.publish.outputs.merged_sha }}

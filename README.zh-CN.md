@@ -42,25 +42,32 @@ node tools/validate-index.mjs "$(git rev-parse origin/main)"
 
 | 结果 | 怎么处理 |
 | --- | --- |
-| `passed` | 配置的检查没有发现问题。继续正常审核；这不保证插件安全或可安装。 |
+| `passed` | 配置的检查没有发现问题。符合下文条件的 PR 可由发布作业自动合并；这不保证插件安全或可安装。 |
 | `needs-review` | 维护者人工核查报告列出的原因，例如 `AgnesAI-Labs` 之外的发布者、许可证、声明能力、安装脚本、运行时依赖或敏感 API。组织归属不是安全保证。 |
 | `failed` | 修复报告所指的版本或 PR 问题并推送。疑似凭据请私下核查；已泄露的先吊销或轮换，再清理历史、提交干净发版。报告不展示命中值或扫描器原始输出。 |
 | `incomplete` | 解决访问或扫描覆盖问题，或在扫描器、网络恢复后重试。一次超过 12 个变更版本时请拆 PR。 |
 
-报告本身仍是建议性的，不批准也不合并 PR。下方的发布作业会重新审核，不以报告状态作为合并依据。
+此报告独立运行，仅报告检查结果，不修改仓库内容，也不批准或合并 PR。下方的发布作业会重新审核，不以此报告的状态作为合并依据。
 
-### 维护者批准后自动合并
+### 无人值守审核、合并和发布
 
-启用后，**Market release publisher** 每十分钟检查一次。它只处理非草稿投稿 PR：必须改动 `docs/index.json`，可以同时改动 `plugins.txt`，不能改其他文件。须由作者以外有仓库写权限的维护者批准**当前提交**；推送新提交后须重新批准。发布作业重新验证索引并运行发版审核：`passed` 和 `needs-review` 经人工批准后可合并，`failed` 和 `incomplete` 不自动合并。仓库维护 PR 仍走正常合并流程。
+启用后，**Market release publisher** 在 PR 索引检查通过后运行，并每十分钟再检查一次。每次最多选择一个目标为 `main`、仍打开且非草稿的 PR。PR 必须改动 `docs/index.json`，可以同时改动 `plugins.txt`，不得改动其他文件。只有两类变更可以自动合并：
 
-只读审核作业拿不到发布密钥。发布作业在请求合并前再次核对提交、PR 标题和描述、批准状态及分支保护，并将合并锁定到该提交。合并后等待[线上索引](https://agnesai-labs.github.io/agh-plugin-market/index.json)与提交内容逐字节一致。若验证超时，作业会报错并记录合并 SHA；此时应检查 Pages 部署，不要重复合并。
+- 更新已收录且在 [`tools/publish-release.mjs`](tools/publish-release.mjs) 白名单中的仓库版本。初始名单为 `AgnesAI-Labs/agh-app-devboard`、`AgnesAI-Labs/agh-app-pharma-gmp` 和 `AgnesAI-Labs/agh-app-aerospace-quality`。
+- 仅修改市场展示文案，且 PR 的源分支必须在本仓库中（不能来自 fork）。只能修改索引顶层的 `title` 或 `description`，不得修改插件条目或 `plugins.txt`。
 
-**管理员的一次性配置**
+新收录的插件或新发布者、超出上述范围的变更，以及仓库维护或工具变更（包括白名单变更），都须人工审核并合并。只读审核作业使用可信的 `main` 代码，不检出或执行投稿者的代码，并针对 PR 当前提交重新验证索引和审核发版。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
 
-1. 注册由组织拥有的 GitHub App，只安装到 `agh-plugin-market`。赋予仓库 **Contents: Read and write**（Metadata 只读），关闭 webhook，不给 App 规则集绕过权限。Pages 仍从 `main:/docs` 发布。
-2. 创建 Actions 环境 `market-publisher`，只允许部署分支 `main`。将 App 私钥保存为**该环境**的密钥 `MARKET_PUBLISHER_PRIVATE_KEY`；将 App 的 Client ID 写入仓库 Actions 变量 `MARKET_PUBLISHER_CLIENT_ID`。
-3. 在 `main` 的 PR 规则中要求至少一人批准，并在新提交改变 diff 时撤销旧批准。这也约束手动合并。保留 `market / validate-index` 必过、严格要求 PR 跟上 `main`，来源设为 GitHub Actions。不要添加绕过者。批准或索引规则缺失时，发布作业拒绝合并。
-4. 在 `main` 运行 **Market release publisher → Run workflow**，勾选 `dry_run` 演练；不会创建合并令牌或修改 `main`。将仓库 Actions 变量 `MARKET_PUBLISHER_ENABLED` 设为 `true` 后开启定时合并。删除变量或改为 `false` 可阻止新的自动合并；紧急停止时，同时取消正在运行的发布作业。
+独立的合并作业使用仓库内置的短期 `GITHUB_TOKEN`，仅请求合并已经审核的提交。它不会提交批准，也不会绕过规则：GitHub 仍要求通过 PR 合并，并通过严格的 `market / validate-index` 检查（PR 必须跟上 `main`）。无需 GitHub App、PAT、组织管理员或具有绕过权限的账号。
+
+自动合并后，GitHub Actions 会显式将 `docs/index.json` 和 `docs/.nojekyll` 部署到 Pages；手动合并到 `main` 的这两个文件的变更也会发布。[线上索引地址](https://agnesai-labs.github.io/agh-plugin-market/index.json)不变。发布验证会逐字节比较线上索引与提交中的文件。如果合并后验证超时，请用作业报告的 SHA 排查或重试 Pages 部署，不要重复合并。
+
+**仓库管理员配置与停用**
+
+1. 保留 `main` 上的 PR 规则和严格的 `market / validate-index` 必过检查，检查来源设为 GitHub Actions。不要添加可绕过规则的账号。在 **Settings → Pages → Build and deployment → Source** 中，将来源从 **Deploy from a branch**（`main:/docs`）切换到 **GitHub Actions**。
+2. 在 `main` 上通过 **Market release publisher → Run workflow** 运行作业，保留默认勾选的 `dry_run`。即使未启用自动发布，也可用此模式执行审核，不会合并或部署。
+3. 将仓库 Actions 变量 `MARKET_PUBLISHER_ENABLED` 设为 `true`，即可启用自动合并，也可取消勾选 `dry_run` 手动发起。删除变量或设为 `false` 将停止新的自动合并，但不影响手动合并后触发的 Pages 部署。紧急停止时，还需取消正在运行的发布作业；取消不能撤销已完成的合并。
+4. 如需回退部署配置，先停用自动发布，再将 Pages 来源切回 **Deploy from a branch → `main` → `/docs`**，然后确认原线上地址可正常访问。如需撤销已发布的索引变更，请提交回退 PR，按正常流程通过检查后合并，再验证部署结果。
 
 ## 已收录
 

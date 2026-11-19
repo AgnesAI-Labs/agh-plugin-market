@@ -1,16 +1,22 @@
 import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
+import { isDeepStrictEqual as equal } from 'node:util'
 
 const repository = 'AgnesAI-Labs/agh-plugin-market'
 const repoApi = `repos/${repository}`
 const index = 'docs/index.json'
 const maxIndexBytes = 2 * 1024 * 1024
+const releaseSources = new Set([
+  'https://github.com/AgnesAI-Labs/agh-app-devboard',
+  'https://github.com/AgnesAI-Labs/agh-app-pharma-gmp',
+  'https://github.com/AgnesAI-Labs/agh-app-aerospace-quality',
+])
 const sha = /^[0-9a-f]{40}$/
 const digest = /^[0-9a-f]{64}$/
 const prNumber = (n) => Number.isSafeInteger(n) && n > 0
@@ -18,9 +24,7 @@ const log = (message) => console.log(message)
 const includesIndexGate = (rule) => rule.type === 'required_status_checks'
   && rule.parameters?.strict_required_status_checks_policy === true
   && rule.parameters.required_status_checks?.some(({ context, integration_id }) => context === 'market / validate-index' && integration_id === 15368)
-const includesApprovalGate = (rule) => rule.type === 'pull_request'
-  && rule.parameters?.required_approving_review_count >= 1
-  && rule.parameters.dismiss_stale_reviews_on_push === true
+const stable = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/
 
 function run(command, args, options = {}) {
   return spawnSync(command, args, { maxBuffer: 16 * 1024 * 1024, timeout: 60_000, ...options })
@@ -36,44 +40,91 @@ function checked(result, message) {
   return result.stdout
 }
 
-function api(path, { pages = false, payload, token = process.env.GH_TOKEN } = {}) {
+function api(path, { pages = false, payload } = {}) {
   const args = ['api', '--hostname', 'github.com', `${repoApi}/${path}`]
   if (pages) args.push('--paginate', '--slurp')
   if (payload) args.push('--method', 'PUT', '--input', '-')
-  const result = run('gh', args, { env: { ...process.env, GH_TOKEN: token }, input: payload && JSON.stringify(payload) })
+  const result = run('gh', args, { input: payload && JSON.stringify(payload) })
   const data = JSON.parse(checked(result, 'GitHub API request did not complete.'))
   return pages ? data.flat() : data
 }
 
 const mainSha = () => api('git/ref/heads/main').object?.sha
 const checkedOutSha = () => String(checked(git(['rev-parse', 'HEAD']), 'Trusted checkout is not available.')).trim()
-const prMetadata = ({ title, body }) => createHash('sha256').update(JSON.stringify([title, body])).digest('hex')
+const prMetadata = ({ title, body, head }) => createHash('sha256')
+  .update(JSON.stringify([title, body, head.repo?.full_name])).digest('hex')
 
-// Only a current, independent human review counts. A newer comment is not a review decision.
-function currentApprovals(reviews, head, author) {
-  const decisions = new Map()
-  for (const review of reviews) {
-    if (review.user?.type !== 'User' || !Number.isSafeInteger(review.user.id) || review.user.id === author) continue
-    if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) decisions.set(review.user.id, review)
-  }
-  return [...decisions.values()].filter((review) => review.state === 'APPROVED' && review.commit_id === head
-    && /^[a-z\d](?:[a-z\d-]{0,38})$/i.test(review.user.login))
-}
-
-export function planFor(pr, base, request = api) {
+export function planFor(pr, base) {
   if (!prNumber(pr.number) || pr.state !== 'open' || pr.draft !== false || pr.merged !== false || pr.mergeable !== true
     || pr.base?.repo?.full_name !== repository || pr.base.ref !== 'main' || pr.base.sha !== base
     || !sha.test(base ?? '') || !sha.test(pr.head?.sha ?? '') || pr.head.sha === base
-    || !Number.isSafeInteger(pr.user?.id) || typeof pr.title !== 'string'
+    || typeof pr.title !== 'string'
     || (pr.body !== null && typeof pr.body !== 'string')) return null
-  const head = pr.head.sha
-  const candidate = { number: pr.number, base, head, metadata: prMetadata(pr) }
-  const reviews = request(`pulls/${pr.number}/reviews?per_page=100`, { pages: true })
-  for (const review of currentApprovals(reviews, head, pr.user.id)) {
-    const access = request(`collaborators/${review.user.login}/permission`)
-    if (access.user?.id === review.user.id && ['write', 'maintain', 'admin'].includes(access.permission)) return candidate
+  return { number: pr.number, base, head: pr.head.sha, metadata: prMetadata(pr) }
+}
+
+const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+const keysWithin = (value, keys) => record(value) && Object.keys(value).every((key) => keys.includes(key))
+const plainText = (value) => typeof value === 'string' && value.length > 0 && value.length <= 500 && !/[<>]/.test(value)
+const copyText = (value) => plainText(value) || (record(value) && Object.keys(value).length > 0
+  && Object.entries(value).every(([locale, text]) => ['en', 'zh-cn'].includes(locale) && plainText(text)))
+
+function newer(candidate, previous) {
+  const parts = candidate.split('.')
+  const old = previous.split('.')
+  for (let i = 0; i < 3; i++) {
+    if (parts[i].length !== old[i].length) return parts[i].length > old[i].length
+    if (parts[i] !== old[i]) return parts[i] > old[i]
   }
-  return null
+  return false
+}
+
+function isReleaseUpdate(before, after) {
+  const { versions: old, ...oldFields } = before
+  const { versions: releases, ...fields } = after
+  const url = before.repository?.url
+  if (!releaseSources.has(url) || !equal(oldFields, fields)) return false
+  const known = new Map(old.map((release) => [release.version, release]))
+  let additions = 0
+  for (const release of releases) {
+    const previous = known.get(release.version)
+    if (previous) {
+      if (!equal(previous, release)) return false
+      continue
+    }
+    if (!keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines']) || !stable.test(release.version)
+      || !old.every((previous) => newer(release.version, previous.version))
+      || !keysWithin(release.source, ['type', 'url', 'commit']) || release.source.type !== 'git'
+      || release.source.url !== url || !sha.test(release.source.commit)
+      || !Number.isSafeInteger(release.publishTimestamp) || release.publishTimestamp <= 0
+      || !keysWithin(release.engines, ['agh'])
+      || (Object.hasOwn(release.engines, 'agh') && !plainText(release.engines.agh))) return false
+    additions++
+  }
+  return additions > 0
+}
+
+// Both indexes must already have passed the installed market validator.
+export function catalogChange(before, after, { sameRepository, sourcesChanged }) {
+  if (equal(before, after)) return null
+  const { title, description } = after
+  if (equal({ ...before, title, description }, after)) {
+    return sameRepository && !sourcesChanged && copyText(title) && copyText(description) ? 'catalog-copy' : null
+  }
+  const { plugins: old, ...oldCatalog } = before
+  const { plugins, ...catalog } = after
+  if (!sourcesChanged || !equal(oldCatalog, catalog) || old.length !== plugins.length) return null
+  return old.every((row, i) => equal(row, plugins[i]) || isReleaseUpdate(row, plugins[i])) ? 'release-update' : null
+}
+
+function readIndex(ref) {
+  return JSON.parse(checked(git(['cat-file', 'blob', `${ref}:${index}`], { maxBuffer: maxIndexBytes + 1 }),
+    'Could not read the pinned catalog.'))
+}
+
+function sourceList(ref) {
+  return String(checked(git(['cat-file', 'blob', `${ref}:plugins.txt`], { maxBuffer: maxIndexBytes + 1 }),
+    'Could not read the pinned source list.')).split('\\n').filter((line) => !line.trimStart().startsWith('# pin:'))
 }
 
 function output(key, value) {
@@ -118,13 +169,23 @@ function audit() {
         log(`PR #${number}: index validation did not pass.`)
         continue
       }
+      const sourcesChanged = changed.includes('plugins.txt')
+      const kind = catalogChange(readIndex(base), readIndex(head), { sameRepository: pr.head.repo?.full_name === repository, sourcesChanged })
+      if (!kind || (sourcesChanged && !equal(sourceList(base), sourceList(head)))) {
+        log(`PR #${number}: catalog changes do not qualify for unattended publication.`)
+        continue
+      }
       const event = join(dir, 'event.json')
       writeFileSync(event, JSON.stringify({ pull_request: pr }), { mode: 0o600 })
-      log(`PR #${number}: fresh release review.`)
-      const review = run(process.execPath, ['tools/review-release.mjs', base, head, event], { env, timeout: 11 * 60_000 })
+      const evidence = join(dir, 'outcome.txt')
+      writeFileSync(evidence, '', { mode: 0o600 })
+      log(`PR #${number}: fresh release review (${kind}).`)
+      const review = run(process.execPath, ['tools/review-release.mjs', base, head, event], {
+        env: { ...env, GITHUB_OUTPUT: evidence }, timeout: 11 * 60_000,
+      })
       if (review.stdout) process.stdout.write(review.stdout)
-      if (review.error || review.status !== 0) {
-        log(`PR #${number}: review failed or did not complete; no merge authorized.`)
+      if (review.error || review.status !== 0 || readFileSync(evidence, 'utf8') !== 'outcome=passed\n') {
+        log(`PR #${number}: machine review did not pass; no merge authorized.`)
         continue
       }
       log(`PR #${number}: current head is eligible for merge.`)
@@ -134,16 +195,16 @@ function audit() {
       rmSync(dir, { recursive: true, force: true })
     }
   }
-  log('No approved catalog submission is ready for automatic merge.')
+  log('No catalog submission qualifies for unattended publication.')
 }
 
 function merge(text) {
   const plan = JSON.parse(text)
   const { number, base, head, metadata } = plan
   if (!prNumber(number) || !sha.test(base ?? '') || !sha.test(head ?? '') || !digest.test(metadata ?? '')
-    || !process.env.MARKET_PUBLISHER_TOKEN) throw new Error('Invalid merge plan or missing publisher token.')
+    || !process.env.GH_TOKEN) throw new Error('Invalid merge plan or missing Actions token.')
   const rules = api('rules/branches/main')
-  if (!rules.some(includesIndexGate) || !rules.some(includesApprovalGate)) {
+  if (!rules.some(includesIndexGate) || !rules.some((rule) => rule.type === 'pull_request')) {
     throw new Error('Required main protections are not active; no merge attempted.')
   }
   if (checkedOutSha() !== base || mainSha() !== base) {
@@ -152,26 +213,24 @@ function merge(text) {
   }
   const current = planFor(api(`pulls/${number}`), base)
   if (!current || current.head !== head || current.metadata !== metadata) {
-    log(`PR #${number} or its approval changed after audit; no merge attempted.`)
+    log(`PR #${number} changed after audit; no merge attempted.`)
     return
   }
   const result = api(`pulls/${number}/merge`, {
-    token: process.env.MARKET_PUBLISHER_TOKEN,
-    payload: { sha: head, merge_method: 'merge', commit_title: `Market: merge approved PR #${number}`, commit_message: 'Reviewed catalog submission.' },
+    payload: { sha: head, merge_method: 'squash', commit_title: `Market: publish eligible PR #${number}`, commit_message: 'Machine-reviewed catalog submission.' },
   })
   if (result.merged !== true || !sha.test(result.sha ?? '')) throw new Error('GitHub did not confirm the merge.')
   log(`PR #${number} merged as ${result.sha}.`)
   output('merged_sha', result.sha)
 }
 
-async function verifyPages(merged) {
-  if (!sha.test(merged ?? '')) throw new Error('Invalid merge SHA.')
-  checked(git(['fetch', '--no-tags', '--no-recurse-submodules', '--depth=1', 'origin', merged]), 'Cannot fetch merged index.')
-  const expected = checked(git(['cat-file', 'blob', `${merged}:${index}`], { maxBuffer: maxIndexBytes + 1 }), 'Cannot read merged index.')
-  if (expected.length > maxIndexBytes) throw new Error('Merged index is over the download limit.')
+async function verifyPages(revision) {
+  if (!sha.test(revision ?? '') || checkedOutSha() !== revision) throw new Error('Pages verification must use the deployed checkout.')
+  const expected = checked(git(['cat-file', 'blob', `${revision}:${index}`], { maxBuffer: maxIndexBytes + 1 }), 'Cannot read deployed index.')
+  if (expected.length > maxIndexBytes) throw new Error('Deployed index is over the download limit.')
   const url = new URL('https://agnesai-labs.github.io/agh-plugin-market/index.json')
   for (let attempt = 0; attempt < 18; attempt++) {
-    url.search = new URLSearchParams({ revision: merged, attempt })
+    url.search = new URLSearchParams({ revision, attempt })
     try {
       const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(5_000) })
       if (response.ok && response.body) {
@@ -183,14 +242,14 @@ async function verifyPages(merged) {
           size += chunk.length
         }
         if (size === buffer.length && buffer.equals(expected)) {
-          log(`Pages serves the exact index from ${merged}.`)
+          log(`Pages serves the exact index from ${revision}.`)
           return
         }
       } else await response.body?.cancel()
     } catch { /* Pages can be unavailable while redeploying. */ }
     if (attempt < 17) await delay(10_000)
   }
-  throw new Error(`PR was merged as ${merged}, but the published index did not match within the verification window.`)
+  throw new Error(`The published index did not match ${revision} within the verification window.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -200,7 +259,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     if (mode === 'audit' && !arg && rest.length === 0) audit()
     else if (mode === 'merge' && arg && rest.length === 0) merge(arg)
     else if (mode === 'verify-pages' && arg && rest.length === 0) await verifyPages(arg)
-    else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages MERGE_SHA')
+    else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages DEPLOYED_SHA')
   } catch (error) {
     // Unknown errors can contain API responses, commit content or other untrusted input.
     console.error(error.constructor === Error ? error.message : 'Market publication could not complete.')

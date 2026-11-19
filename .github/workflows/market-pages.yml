@@ -1,0 +1,111 @@
+name: Market Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/index.json'
+      - 'docs/.nojekyll'
+      - '.github/workflows/market-pages.yml'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      required_merge_sha:
+        description: Merge commit that must be reachable from the deployed revision
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  check-source:
+    if: github.repository == 'AgnesAI-Labs/agh-plugin-market' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: read
+    outputs:
+      ready: ${{ steps.pages.outputs.ready }}
+    steps:
+      - name: Check the GitHub Pages source
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIRED_MERGE_SHA: ${{ inputs.required_merge_sha }}
+        run: |
+          if ! build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type); then
+            echo '::error::Could not read GitHub Pages settings.'
+            exit 1
+          fi
+          if [[ $build_type == workflow ]]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          elif [[ $build_type == legacy && $GITHUB_EVENT_NAME == push && -z $REQUIRED_MERGE_SHA ]]; then
+            echo '::notice::GitHub Pages still uses branch publishing. Skipping workflow deployment.'
+          else
+            echo '::error::Set the GitHub Pages source to GitHub Actions before deploying.'
+            exit 1
+          fi
+
+  deploy:
+    needs: check-source
+    if: needs.check-source.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: market-pages-deploy
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    env:
+      GIT_TERMINAL_PROMPT: '0'
+    steps:
+      # Resolve main only after acquiring the deploy lock. Queued events can arrive out of order.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Validate and stage the current market index
+        id: site
+        env:
+          REQUIRED_MERGE_SHA: ${{ inputs.required_merge_sha }}
+        run: |
+          set -euo pipefail
+          revision=$(git rev-parse HEAD)
+          if [[ -n $REQUIRED_MERGE_SHA ]]; then
+            if [[ ! $REQUIRED_MERGE_SHA =~ ^[0-9a-f]{40}$ ]] ||
+              ! git merge-base --is-ancestor "$REQUIRED_MERGE_SHA" "$revision"; then
+              echo '::error::The required merge is not an ancestor of the checked-out main revision.'
+              exit 1
+            fi
+          fi
+          if [[ ! -d docs || -L docs || ! -f docs/index.json || -L docs/index.json ||
+            ! -f docs/.nojekyll || -L docs/.nojekyll || -s docs/.nojekyll ]]; then
+            echo '::error::Expected regular docs/index.json and an empty regular docs/.nojekyll.'
+            exit 1
+          fi
+          node tools/validate-index.mjs
+          site=$(mktemp -d "$RUNNER_TEMP/market-pages.XXXXXX")
+          chmod 0755 "$site"
+          install -m 0644 docs/index.json docs/.nojekyll "$site/"
+          printf 'path=%s\nsha=%s\n' "$site" "$revision" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          name: github-pages-${{ github.run_attempt }}
+          path: ${{ steps.site.outputs.path }}
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
+        id: deployment
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
+      - name: Verify the deployed revision's index
+        env:
+          DEPLOYED_SHA: ${{ steps.site.outputs.sha }}
+        run: node tools/publish-release.mjs verify-pages "$DEPLOYED_SHA"

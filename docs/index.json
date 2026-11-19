@@ -254,6 +254,22 @@
           }
         }
       ]
+    },
+    {
+      "name": "@onetaway/agh-readonly-research",
+      "repository": { "url": "https://github.com/Onetaway/agh-market-review-probe" },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795086102,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Onetaway/agh-market-review-probe",
+            "commit": "2631dd8febc50d6ce8c4c4238cace72db8a4d00d"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

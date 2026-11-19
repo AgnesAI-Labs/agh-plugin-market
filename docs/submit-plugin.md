@@ -180,6 +180,8 @@ If upstream `main` advances, update your branch and rerun the index check. For a
 
 Open the PR's `market / validate-index` check and the `market / review-release` report for its **latest commit**. The reviewer treats the PR and release as untrusted data: it scans the PR title, description, and commit history and the changed releases' text and filenames with Gitleaks, including committed build output. It also verifies the tag, pinned commit, proof, manifest, and declared paths. It does not execute plugins, install dependencies, recheck unchanged releases, or prove a plugin or its binary media is safe.
 
+`market / code-review` is an additional [behavioral report](../README.md#behavioral-code-review-report-only) for new or changed release code. It may give you file-and-line links to inspect. This report is not required for merging and may arrive after the PR has merged; the outcomes below refer to `market / review-release`, not `market / code-review`.
+
 | Outcome or finding | What to do |
 | --- | --- |
 | `passed` | No findings from the configured checks. An eligible, up-to-date PR can be merged by the publisher when enabled; this is not a safety or installation guarantee. |

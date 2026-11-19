@@ -39,6 +39,12 @@ For automatic public admission, a plugin row's `capabilities` must be an empty o
 
 This report is independent and advisory: it only reports findings and does not write repository contents, approve, or merge PRs. The publisher runs its own fresh review rather than trusting this status.
 
+### Behavioral code review (report only)
+
+`market / code-review` links to a separate Semgrep report for the PR revision. It analyzes tracked JavaScript and TypeScript, including checked-in build output, in the exact tagged commits of new or changed listings. On updates it compares file contents with the previous indexed release. Initial rules look for sensitive data flowing into a network request and downloaded content flowing into execution. Findings explain the behavior to check and link to the pinned file and line when its path can be safely displayed.
+
+These are signals for human review, not findings of malicious intent. The rules do not cover all languages, cross-file flows, runtime behavior, or ordinary correctness bugs. A report distinguishes unavailable or incomplete scans from no findings and from no applicable code. The job does not execute the plugin or install its dependencies. **The publisher neither waits for this report nor uses its result.** A PR may be merged under the existing rules before the report is available, even if the report later identifies a finding.
+
 ### Unattended review, merge, and publish
 
 When enabled, **Market release publisher** runs after a successful PR index check and every ten minutes. Each audit selects at most one open, non-draft PR to `main`. The PR must change `docs/index.json` and may also change `plugins.txt`; no other files may change. These changes can qualify:

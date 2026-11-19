@@ -1,49 +1,57 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { planFor } from './publish-release.mjs'
+import { catalogChange, planFor } from './publish-release.mjs'
 
 const base = 'a'.repeat(40)
 const head = 'b'.repeat(40)
-const author = { id: 1, login: 'contributor', type: 'User' }
-const maintainer = { id: 2, login: 'maintainer', type: 'User' }
-const other = { id: 3, login: 'outside-reviewer', type: 'User' }
-const bot = { id: 4, login: 'automation[bot]', type: 'Bot' }
+const repo = 'AgnesAI-Labs/agh-plugin-market'
 const pr = {
   number: 7, state: 'open', draft: false, merged: false, mergeable: true,
-  base: { ref: 'main', sha: base, repo: { full_name: 'AgnesAI-Labs/agh-plugin-market' } },
-  head: { sha: head }, user: author, title: 'Update market entry', body: 'Release notes',
-}
-const approval = { user: maintainer, state: 'APPROVED', commit_id: head }
-const request = (reviews) => (path) => {
-  if (path.startsWith('pulls/7/reviews?')) return reviews
-  if (path === 'collaborators/maintainer/permission') return { permission: 'maintain', user: maintainer }
-  if (path === 'collaborators/outside-reviewer/permission') return { permission: 'read', user: other }
-  throw new Error('Approval must come from an independent human reviewer with write access')
+  base: { ref: 'main', sha: base, repo: { full_name: repo } },
+  head: { sha: head, repo: { full_name: repo } }, title: 'Update market entry', body: 'Release notes',
 }
 
-test('the merge plan binds a current approval to the approved commit and checked PR text', () => {
-  const fromGithub = request([approval, { ...approval, state: 'COMMENTED' }])
-  const plan = planFor(pr, base, fromGithub)
+const url = 'https://github.com/AgnesAI-Labs/agh-app-devboard'
+function release(version, source = url) {
+  return { version, source: { type: 'git', url: source, commit: head }, publishTimestamp: 1, engines: {} }
+}
+const trusted = { name: '@agnes-showcase/devboard', repository: { url }, versions: [release('3.8.0')] }
+const externalUrl = 'https://github.com/example/outside'
+const external = { name: '@example/outside', repository: { url: externalUrl }, versions: [release('1.0.0', externalUrl)] }
+const index = { format: 1, title: 'Plugin market', description: 'A list of plugins', plugins: [trusted, external] }
+const fromMarket = { sameRepository: true, sourcesChanged: false }
+const fromFork = { sameRepository: false, sourcesChanged: true }
+
+test('the merge plan binds the checked base, head and PR text without approval APIs', () => {
+  const plan = planFor(pr, base)
   assert.equal(plan.head, head)
   assert.equal(plan.base, base)
-  assert.notEqual(planFor({ ...pr, body: 'Edited release notes' }, base, fromGithub).metadata, plan.metadata)
+  assert.notEqual(planFor({ ...pr, body: 'Edited release notes' }, base).metadata, plan.metadata)
 })
 
-test('only a current, independent human approval with repository write access counts', () => {
-  for (const [label, reviews] of Object.entries({
-    noApproval: [], oldCommit: [{ ...approval, commit_id: 'c'.repeat(40) }],
-    revoked: [approval, { ...approval, state: 'DISMISSED' }],
-    changesRequested: [approval, { ...approval, state: 'CHANGES_REQUESTED' }],
-    author: [{ ...approval, user: author }], external: [{ ...approval, user: other }],
-    bot: [{ ...approval, user: bot }],
-  })) assert.equal(planFor(pr, base, request(reviews)), null, label)
-})
-
-test('even a valid approval cannot authorize a draft, closed PR or stale or foreign base', () => {
-  const fromGithub = request([approval])
+test('draft, closed, conflicting or retargeted PRs have no merge plan', () => {
   for (const patch of [
     { draft: true }, { state: 'closed' }, { mergeable: null },
     { base: { ...pr.base, sha: 'c'.repeat(40) } }, { base: { ...pr.base, ref: 'next' } },
     { base: { ...pr.base, repo: { full_name: 'someone/fork' } } },
-  ]) assert.equal(planFor({ ...pr, ...patch }, base, fromGithub), null)
+  ]) assert.equal(planFor({ ...pr, ...patch }, base), null)
+})
+
+test('catalog presentation changes cannot alter plugin data or come from a fork', () => {
+  const copy = { ...index, title: { en: 'Official plugin market', 'zh-cn': '官方插件市场' } }
+  assert.equal(catalogChange(index, copy, fromMarket), 'catalog-copy')
+  assert.equal(catalogChange(index, copy, { ...fromMarket, sameRepository: false }), null)
+  assert.equal(catalogChange(index, { ...copy, description: '<script>test</script>' }, fromMarket), null)
+  assert.equal(catalogChange(index, { ...copy, plugins: [external] }, fromMarket), null)
+})
+
+test('only newer pinned releases from already listed allowlisted repositories qualify', () => {
+  const replacing = (versions) => ({ ...index, plugins: [{ ...trusted, versions }, external] })
+  assert.equal(catalogChange(index, replacing([release('3.10.0')]), fromFork), 'release-update')
+  assert.equal(catalogChange(index, replacing([release('3.10.0')]), fromMarket), null)
+  assert.equal(catalogChange(index, replacing([release('3.7.9')]), fromFork), null)
+  assert.equal(catalogChange(index, replacing([{ ...release('3.8.0'), publishTimestamp: 2 }, release('3.10.0')]), fromFork), null)
+  assert.equal(catalogChange(index, replacing([{ ...release('3.10.0'), opaqueSource: 'unexpected' }]), fromFork), null)
+  assert.equal(catalogChange(index, { ...index, plugins: [trusted, { ...external, versions: [release('1.1.0', externalUrl)] }] }, fromFork), null)
+  assert.equal(catalogChange(index, { ...index, plugins: [trusted, external, { ...trusted, name: '@example/new' }] }, fromFork), null)
 })

@@ -42,25 +42,32 @@ If `main` advances while your PR is open, update your branch before merging and 
 
 | Result | Next step |
 | --- | --- |
-| `passed` | No findings from the configured checks. Continue normal review; this is not a safety or installation guarantee. |
+| `passed` | No findings from the configured checks. Eligible PRs may be merged by the publisher below; this is not a safety or installation guarantee. |
 | `needs-review` | A maintainer must review the specific findings, such as a publisher outside `AgnesAI-Labs`, licensing, declared capabilities, install hooks, runtime dependencies, or sensitive APIs. Organization ownership is not a guarantee of safety. |
 | `failed` | Fix the indicated release or PR issue and push a new revision. For potential credentials, verify privately and revoke or rotate anything exposed before cleaning the history and submitting a clean release. The report does not include matching values or raw scanner output. |
 | `incomplete` | Fix missing access or scan coverage, or retry a scanner or network failure. If a batch exceeds 12 changed releases, split the PR. |
 
-The report itself is advisory. It neither approves nor merges a PR. The separate publisher below uses a fresh review, not the advisory status.
+This report is independent and advisory: it only reports findings and does not write repository contents, approve, or merge PRs. The publisher runs its own fresh review rather than trusting this status.
 
-### Automatic merge after maintainer approval
+### Unattended review, merge, and publish
 
-Once enabled, **Market release publisher** checks for approved catalog PRs every ten minutes. It considers only non-draft PRs that change `docs/index.json` and optionally `plugins.txt`, with no changes elsewhere. A maintainer other than the author must approve the **current** PR commit. Pushes require approval of the new commit. The publisher reruns index validation and release review: `passed` and `needs-review` can proceed with human approval; `failed` and `incomplete` cannot. Repository maintenance PRs still use the normal merge flow.
+When enabled, **Market release publisher** runs after a successful PR index check and every ten minutes. Each audit selects at most one open, non-draft PR to `main`. The PR must change `docs/index.json` and may also change `plugins.txt`; no other files may change. Only two kinds of changes qualify:
 
-The read-only audit never receives the publishing key. The publisher rechecks the current commit, PR text, approval, and branch protections before requesting a merge for that exact commit. After merging it waits for the [public index](https://agnesai-labs.github.io/agh-plugin-market/index.json) to match the committed bytes. If Pages verification times out, the run fails and reports the merge SHA; check the Pages deployment instead of merging again.
+- A version update to an already indexed repository on the allowlist in [`tools/publish-release.mjs`](tools/publish-release.mjs). The initial allowlist is `AgnesAI-Labs/agh-app-devboard`, `AgnesAI-Labs/agh-app-pharma-gmp`, and `AgnesAI-Labs/agh-app-aerospace-quality`.
+- A presentation-only change from a branch in this repository (not a fork): only the catalog's top-level `title` or `description` may change, with no changes to plugin entries or `plugins.txt`.
 
-**One-time setup for repository admins**
+New listings or publishers, changes outside these categories, and repository or tooling changes (including changes to the allowlist) require manual review and merge. The read-only audit uses trusted `main` code, never checks out or executes contributor code, and runs fresh index validation and release review against the current PR head. Only `passed` can proceed; `needs-review`, `failed`, and `incomplete` never qualify for automatic merge.
 
-1. Register an organization-owned GitHub App and install it **only** on `agh-plugin-market`. Grant repository **Contents: Read and write** (Metadata is read-only); disable webhooks and do not add the App to a ruleset bypass list. Keep Pages on `main:/docs`.
-2. Create the `market-publisher` Actions environment, allow deployments only from the `main` branch, and store the App private key as the **environment** secret `MARKET_PUBLISHER_PRIVATE_KEY`. Set the repository Actions variable `MARKET_PUBLISHER_CLIENT_ID` to the App's client ID.
-3. In the `main` PR rules, require at least one approval and dismiss stale approvals when new commits change the diff. This also applies to manual merges. Keep `market / validate-index` required and strict (the PR must be up to date) with GitHub Actions as the source. Do not add bypass actors. The publisher refuses to merge if the approval or index rule is missing.
-4. Use **Market release publisher → Run workflow** on `main` with `dry_run` checked to rehearse. It does not create a merge token or update `main`. Set the repository Actions variable `MARKET_PUBLISHER_ENABLED` to `true` to activate scheduled merges. Remove it or set it to `false` to stop new automatic merges; cancel any active publisher run if stopping urgently.
+An isolated merge job uses the repository's short-lived `GITHUB_TOKEN` and requests a merge for the audited commit only. It does not post approvals or bypass any rule: GitHub still requires a pull request and the strict `market / validate-index` check (the PR must be up to date). No GitHub App, PAT, organization administrator, or bypass actor is needed.
+
+GitHub Actions explicitly deploys `docs/index.json` and `docs/.nojekyll` to Pages after an automatic merge; it also deploys changes to these files merged manually to `main`. The [public index URL](https://agnesai-labs.github.io/agh-plugin-market/index.json) is unchanged. Publication is verified by comparing the public index byte for byte with the committed file. If verification times out after a merge, use the reported SHA to diagnose or retry the Pages deployment rather than merging again.
+
+**Repository admin setup and controls**
+
+1. Keep the `main` pull request rule and strict `market / validate-index` requirement with GitHub Actions as the check source. Do not add bypass actors. In **Settings → Pages → Build and deployment → Source**, switch from **Deploy from a branch** (`main:/docs`) to **GitHub Actions**.
+2. On `main`, use **Market release publisher → Run workflow** with `dry_run` checked (the default). This runs the audit without merging or deploying, even with automatic publishing disabled.
+3. Set the repository Actions variable `MARKET_PUBLISHER_ENABLED` to `true` to enable automatic merges or run manually with `dry_run` unchecked. Removing the variable or setting it to `false` disables new automatic merges, not Pages deployments from manual merges. To stop urgently, also cancel active publisher runs; cancellation does not undo a merge that already happened.
+4. To roll back the deployment setup, disable the publisher and switch Pages back to **Deploy from a branch → `main` → `/docs`**, then verify the same public URL. To undo a published catalog change, merge a revert PR through the normal checks and verify the resulting deployment.
 
 ## Listed plugins
 

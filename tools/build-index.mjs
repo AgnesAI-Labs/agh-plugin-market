@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { publicRepository } from './public-submission.mjs'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const dir = process.argv[2]
@@ -35,7 +36,8 @@ const plugins = urls.map((url) => {
     name: pkg.name,
     ...(meta.displayName && { title: text(meta.displayName, meta.locales, 'displayName') }),
     ...(meta.summary && { description: text(meta.summary, meta.locales, 'summary') }),
-    author: (typeof pkg.author === 'string' ? pkg.author : pkg.author?.name) || 'AgnesAI Labs',
+    author: publicRepository(pkg.name, url) ? url.split('/')[3] :
+      (typeof pkg.author === 'string' ? pkg.author : pkg.author?.name) || 'AgnesAI Labs',
     homepage: url,
     repository: { url },
     metadata: { keywords: pkg.keywords ?? [], labels: [], sortKeys: {} },

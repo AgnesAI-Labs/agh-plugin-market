@@ -45,13 +45,26 @@ test('catalog presentation changes cannot alter plugin data or come from a fork'
   assert.equal(catalogChange(index, { ...copy, plugins: [external] }, fromMarket), null)
 })
 
-test('only newer pinned releases from already listed allowlisted repositories qualify', () => {
+test('legacy allowlisted and namespaced listings qualify only for newer pinned releases', () => {
   const replacing = (versions) => ({ ...index, plugins: [{ ...trusted, versions }, external] })
   assert.equal(catalogChange(index, replacing([release('3.10.0')]), fromFork), 'release-update')
   assert.equal(catalogChange(index, replacing([release('3.10.0')]), fromMarket), null)
   assert.equal(catalogChange(index, replacing([release('3.7.9')]), fromFork), null)
   assert.equal(catalogChange(index, replacing([{ ...release('3.8.0'), publishTimestamp: 2 }, release('3.10.0')]), fromFork), null)
   assert.equal(catalogChange(index, replacing([{ ...release('3.10.0'), opaqueSource: 'unexpected' }]), fromFork), null)
-  assert.equal(catalogChange(index, { ...index, plugins: [trusted, { ...external, versions: [release('1.1.0', externalUrl)] }] }, fromFork), null)
-  assert.equal(catalogChange(index, { ...index, plugins: [trusted, external, { ...trusted, name: '@example/new' }] }, fromFork), null)
+  assert.equal(catalogChange(index, { ...index, plugins: [trusted, { ...external, versions: [release('1.1.0', externalUrl)] }] }, fromFork), 'release-update')
+})
+
+test('a fork can append one namespaced first release without editing existing rows', () => {
+  const url = 'https://github.com/Personal-Owner/agh-welcome'
+  const listing = { name: '@personal-owner/welcome', repository: { url }, versions: [release('1.0.0', url)] }
+  const adding = (row) => ({ ...index, plugins: [...index.plugins, row] })
+  assert.equal(catalogChange(index, adding(listing), fromFork), 'new-listing')
+  assert.equal(catalogChange(index, adding({ ...listing, name: '@agnes/fake' }), fromFork), null)
+  assert.equal(catalogChange(index, adding({ ...listing, name: '@someone-else/welcome' }), fromFork), null)
+  assert.equal(catalogChange(index, adding({ ...listing, homepage: 'https://example.org' }), fromFork), null)
+  assert.equal(catalogChange(index, adding({ ...listing, author: 'AgnesAI Labs' }), fromFork), null)
+  assert.equal(catalogChange(index, adding({ ...listing, versions: [...listing.versions, release('2.0.0', url)] }), fromFork), null)
+  assert.equal(catalogChange(index, { ...adding(listing), plugins: [external, trusted, listing] }, fromFork), null)
+  assert.equal(catalogChange(index, adding(listing), { ...fromFork, sourcesChanged: false }), null)
 })

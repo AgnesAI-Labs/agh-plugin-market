@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-[Agnes Harness](https://github.com/AgnesAI-Labs/agnes-harness)（AGH）的官方插件市场索引。AGH 不做中心化商店：每个插件都放在自己的 GitHub 仓库里，本仓库只列出官方插件。
+[Agnes Harness](https://github.com/AgnesAI-Labs/agnes-harness)（AGH）的官方插件市场索引。AGH 不做中心化商店：每个插件都放在自己的 GitHub 仓库里，社区发布的插件也可以收录。
 
 - `plugins.txt`：来源列表，一行一个 Git 仓库。
 - `docs/index.json`：对外发布的索引，经 GitHub Pages 提供，AGH 的「插件 → 市场」读取它。
@@ -20,30 +20,59 @@
 
 ## 上架你的插件
 
-1. 插件单独放一个 GitHub 仓库，`package.json` 放在仓库根目录，用 `vX.Y.Z` tag 发版。
-2. 给仓库加上 GitHub 话题 `agh-plugin`，这样它会出现在 [github.com/topics/agh-plugin](https://github.com/topics/agh-plugin)。
-3. 向 `main` 提 PR，同时提交加入仓库地址的 `plugins.txt` 和重新生成的 `docs/index.json`。
+### 提交新的公开插件
 
-更新已收录的仓库时，保留 URL，再在 `plugins.txt` 添加一行 `# pin: https://github.com/OWNER/REPO 1.2.3 FULL_COMMIT_SHA`，填入实际的 40 位小写 Git 提交 SHA，版本不加 `v`。固定值必须和索引一致；替换唯一的已列版本时，若有旧固定行，一并移除。索引中保留的版本不得换绑提交。生成器可能扫入其他仓库的新 tag，审阅差异后再提交；CI 会拒绝未声明的更新。下架时同时移除 URL、对应的固定行和索引条目。
+1. 将插件放在独立的公开 GitHub 仓库中，`package.json` 放在根目录。包名采用 `@<小写的 GitHub 仓库所有者>/<名称>`：例如 `https://github.com/Octo-Cat/agh-example` 可以用 `@octo-cat/example`。`agnes`、`agnesai`、`agnes-ai`、`agnesai-labs`、`agnes-harness`、`agnes-showcase` 是保留作用域，不区分大小写。
+2. 在要打 tag 的提交中，将 `agh.market.json` 放在插件仓库根目录。以将要提交市场 PR 的 GitHub 账号登录，运行 `gh api user --jq .id`。将下面的 `12345` 换成查到的数字账号 ID（不是用户名，也不要加引号）：
 
-可在仓库根目录本地运行必需检查 `market / validate-index`：
+   ```json
+   {
+     "repository": "https://github.com/Octo-Cat/agh-example",
+     "submitters": [12345]
+   }
+   ```
+
+   只允许这两个字段。`repository` 必须是标准的 `https://github.com/OWNER/REPO` 地址，且与索引中的 Git 来源一致（不区分大小写）。`submitters` 必须包含 1–32 个互不重复的正数，且每个数都必须是安全整数。公开 tag 表明发布者授权这些账号投稿；发布作业核对的是发起 PR 的账号，而不是 Git 提交作者。文件只在插件仓库默认分支上还不够，必须存在于 tag 指向的那个提交中。
+3. 发布与 `package.json` 版本一致的稳定版 `vX.Y.Z` tag，并添加 `agh-plugin` 话题，方便其他人在 [github.com/topics/agh-plugin](https://github.com/topics/agh-plugin) 找到插件。确认该 tag 可直接从此公开仓库访问（不能依赖重定向），并确认其指向的提交正是 `source.commit` 要填的 40 位小写 SHA。例如：
+
+   ```sh
+   GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c http.followRedirects=false ls-remote --exit-code \
+     https://github.com/Octo-Cat/agh-example 'refs/tags/v1.2.3' 'refs/tags/v1.2.3^{}'
+   ```
+
+   如果是附注 tag（annotated tag），请用 `^{}` 那一行的提交 SHA，而不是 tag 对象的 SHA。
+4. 如果没有本市场仓库的写入权限，请先 fork，将 fork 同步到上游最新的 `main`，再从该提交创建分支。用 fork 中的分支向 `AgnesAI-Labs/agh-plugin-market:main` 提 PR。不要求加入组织或团队。
+5. 在 `plugins.txt` 末尾只追加一行标准仓库 URL。在 `docs/index.json` 的 `plugins` 数组末尾只追加一个插件条目，其中仅有一个固定到 tag 所指提交的稳定版本。已有行、已有条目、索引顶层字段和其他文件均保持不变。首次上架不需要 `# pin` 行。
+
+用 `node tools/build-index.mjs <放各仓库克隆的目录>` 生成候选条目。`plugins.txt` 中的每个仓库都要克隆到该目录的同名子目录，并拉取发版 tag。请在已追加 URL 的临时工作副本中运行：生成器会覆盖 `docs/index.json`，也可能纳入其他仓库的新 tag。**只把候选条目**复制到 PR 分支的索引中，并确认生成器选中了预期的版本和提交。
+
+`title` 和 `description` 是可选的展示文案，可用普通字符串，也可按 `en` 和/或 `zh-cn` 填写。`author` 可省略；若填写，必须与 GitHub 仓库所有者的用户名或组织名一致（不区分大小写）。对于使用仓库所有者作用域的包，生成器会自动填入该名称。`homepage` 可以省略；若填写，必须是同一 GitHub 仓库的 HTTPS 地址。`repository` 只含 `url`。元数据沿用生成器的格式：`keywords` 取插件清单中的关键词或用 `[]`，`labels` 为空数组 `[]`，`sortKeys` 为空对象 `{}`。
+
+### 更新或下架已有插件
+
+更新版本时，保留仓库 URL，再在 `plugins.txt` 添加一行 `# pin: https://github.com/OWNER/REPO 1.2.3 FULL_COMMIT_SHA`，填入实际的 40 位小写提交 SHA，版本不加 `v`。固定值必须和索引一致；替换唯一的已列版本时，若有旧固定行，一并移除。索引中保留的版本不得换绑提交。对于使用仓库所有者作用域的公开插件，新 tag 所指的提交也必须含有效的 `agh.market.json`，授权发起该更新 PR 的账号。只把生成器产出的目标版本变更复制到索引并核对差异；CI 会拒绝未声明的更新。下架时同时移除 URL、对应的固定行和索引条目。
+
+### 检查投稿
+
+可在仓库根目录本地运行必需检查 `market / validate-index`。如果 fork 尚未配置上游远程仓库，先运行一次 `git remote add upstream https://github.com/AgnesAI-Labs/agh-plugin-market.git`。如果 `origin` 已指向市场原仓库，把下面的 `upstream` 换成 `origin`：
 
 ```sh
-node tools/validate-index.mjs "$(git rev-parse origin/main)"
+git fetch upstream main
+node tools/validate-index.mjs "$(git rev-parse upstream/main)"
 ```
 
 索引检查覆盖 format 1、包名唯一性、Git 来源和 `plugins.txt` 一致性。发布文件不得超过 2 MiB（2,097,152 字节），这是 AGH daemon 的下载上限。该检查离线运行，不验证 tag 是否存在。
 
-如果 PR 审核期间 `main` 有新提交，合并前先更新分支，等待检查在新提交上通过。
+如果 PR 审核期间 `main` 有新提交，请先更新分支，再等待新提交上的检查。
 
 ### 发版审核（仅报告）
 
-`market / review-release` 链接到当前 PR 提交的报告。它扫描 PR 标题、描述和拟合入的提交历史中的凭据，再审核索引里新增或更新的版本。它核对公开的 `vX.Y.Z` tag 与固定提交，检查根清单、声明入口和资源，并用 Gitleaks 扫描文本文件（含已提交的构建产物）和文件名。它不运行插件、不安装依赖、不重查未改动的版本，也不保证二进制媒体安全。
+打开 `market / review-release` 链接，查看 PR 最新提交的报告和具体发现。它扫描 PR 标题、描述和拟合入的提交历史中的凭据，再审核索引里新增或更新的版本。它核对公开的 `vX.Y.Z` tag 与固定提交，在需要时验证公开投稿的授权文件，检查根清单、声明入口和资源，并用 Gitleaks 扫描文本文件（含已提交的构建产物）和文件名。这些静态检查不能证明插件安全：它们不运行插件、不安装依赖、不重查未改动的版本，也不保证二进制媒体安全。
 
 | 结果 | 怎么处理 |
 | --- | --- |
 | `passed` | 配置的检查没有发现问题。符合下文条件的 PR 可由发布作业自动合并；这不保证插件安全或可安装。 |
-| `needs-review` | 维护者人工核查报告列出的原因，例如 `AgnesAI-Labs` 之外的发布者、许可证、声明能力、安装脚本、运行时依赖或敏感 API。组织归属不是安全保证。 |
+| `needs-review` | 维护者人工核查报告列出的原因，例如许可证、声明能力、安装脚本、运行时依赖或敏感 API。公开投稿通过授权验证后，不属于 `AgnesAI-Labs` 本身并不构成问题。 |
 | `failed` | 修复报告所指的版本或 PR 问题并推送。疑似凭据请私下核查；已泄露的先吊销或轮换，再清理历史、提交干净发版。报告不展示命中值或扫描器原始输出。 |
 | `incomplete` | 解决访问或扫描覆盖问题，或在扫描器、网络恢复后重试。一次超过 12 个变更版本时请拆 PR。 |
 
@@ -51,12 +80,13 @@ node tools/validate-index.mjs "$(git rev-parse origin/main)"
 
 ### 无人值守审核、合并和发布
 
-启用后，**Market release publisher** 在 PR 索引检查通过后运行，并每十分钟再检查一次。每次最多选择一个目标为 `main`、仍打开且非草稿的 PR。PR 必须改动 `docs/index.json`，可以同时改动 `plugins.txt`，不得改动其他文件。只有两类变更可以自动合并：
+启用后，**Market release publisher** 在 PR 索引检查通过后运行，并每十分钟再检查一次。每次最多选择一个目标为 `main`、仍打开且非草稿的 PR。PR 必须改动 `docs/index.json`，可以同时改动 `plugins.txt`，不得改动其他文件。以下变更有资格自动合并：
 
-- 更新已收录且在 [`tools/publish-release.mjs`](tools/publish-release.mjs) 白名单中的仓库版本。初始名单为 `AgnesAI-Labs/agh-app-devboard`、`AgnesAI-Labs/agh-app-pharma-gmp` 和 `AgnesAI-Labs/agh-app-aerospace-quality`。
+- 按上述规则新增一个公开插件。任何获得该版本 `agh.market.json` 授权的 GitHub 用户都可以投稿，也可以从 fork 提交。
+- 更新使用仓库所有者作用域的已收录公开插件版本，且符合上述固定提交和发版授权规则；或更新已收录且在 [`tools/publish-release.mjs`](tools/publish-release.mjs) 原有白名单中的仓库版本。原有名单包括 `AgnesAI-Labs/agh-app-devboard`、`AgnesAI-Labs/agh-app-pharma-gmp` 和 `AgnesAI-Labs/agh-app-aerospace-quality`。
 - 仅修改市场展示文案，且 PR 的源分支必须在本仓库中（不能来自 fork）。只能修改索引顶层的 `title` 或 `description`，不得修改插件条目或 `plugins.txt`。
 
-新收录的插件或新发布者、超出上述范围的变更，以及仓库维护或工具变更（包括白名单变更），都须人工审核并合并。只读审核作业使用可信的 `main` 代码，不检出或执行投稿者的代码，并针对 PR 当前提交重新验证索引和审核发版。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
+超出上述类别的变更，以及仓库维护或工具变更（包括原有白名单的变更），都须人工审核并合并。只读审核作业使用可信的 `main` 代码，不检出或执行投稿者的代码，并针对 PR 当前提交重新验证索引和审核发版。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
 
 独立的合并作业使用仓库内置的短期 `GITHUB_TOKEN`，仅请求合并已经审核的提交。它不会提交批准，也不会绕过规则：GitHub 仍要求通过 PR 合并，并通过严格的 `market / validate-index` 检查（PR 必须跟上 `main`）。无需 GitHub App、PAT、组织管理员或具有绕过权限的账号。
 

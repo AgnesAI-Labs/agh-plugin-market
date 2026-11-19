@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { isDeepStrictEqual as equal } from 'node:util'
+import { publicRepository } from './public-submission.mjs'
 
 const repository = 'AgnesAI-Labs/agh-plugin-market'
 const repoApi = `repos/${repository}`
@@ -51,8 +52,8 @@ function api(path, { pages = false, payload } = {}) {
 
 const mainSha = () => api('git/ref/heads/main').object?.sha
 const checkedOutSha = () => String(checked(git(['rev-parse', 'HEAD']), 'Trusted checkout is not available.')).trim()
-const prMetadata = ({ title, body, head }) => createHash('sha256')
-  .update(JSON.stringify([title, body, head.repo?.full_name])).digest('hex')
+const prMetadata = ({ title, body, head, user }) => createHash('sha256')
+  .update(JSON.stringify([title, body, head.repo?.full_name, user?.id])).digest('hex')
 
 export function planFor(pr, base) {
   if (!prNumber(pr.number) || pr.state !== 'open' || pr.draft !== false || pr.merged !== false || pr.mergeable !== true
@@ -79,11 +80,34 @@ function newer(candidate, previous) {
   return false
 }
 
+function validRelease(release, url) {
+  return keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines']) && stable.test(release.version)
+    && keysWithin(release.source, ['type', 'url', 'commit']) && release.source.type === 'git'
+    && release.source.url === url && sha.test(release.source.commit)
+    && Number.isSafeInteger(release.publishTimestamp) && release.publishTimestamp > 0
+    && keysWithin(release.engines, ['agh'])
+    && (!Object.hasOwn(release.engines, 'agh') || plainText(release.engines.agh))
+}
+
+function isNewListing(row) {
+  if (!keysWithin(row, ['name', 'repository', 'versions', 'title', 'description', 'homepage', 'author', 'metadata'])
+    || !keysWithin(row.repository, ['url']) || !publicRepository(row.name, row.repository.url)
+    || row.versions.length !== 1 || !validRelease(row.versions[0], row.repository.url)) return false
+  if ((row.title !== undefined && !copyText(row.title)) || (row.description !== undefined && !copyText(row.description))
+    || (row.homepage !== undefined && row.homepage !== row.repository.url)
+    || (row.author !== undefined && (!plainText(row.author) || row.author.toLowerCase() !== row.repository.url.split('/')[3].toLowerCase()))) return false
+  if (row.metadata === undefined) return true
+  return keysWithin(row.metadata, ['keywords', 'labels', 'sortKeys'])
+    && Array.isArray(row.metadata.keywords) && row.metadata.keywords.length <= 32
+    && row.metadata.keywords.every((word) => plainText(word) && word.length <= 64)
+    && equal(row.metadata.labels, []) && equal(row.metadata.sortKeys, {})
+}
+
 function isReleaseUpdate(before, after) {
   const { versions: old, ...oldFields } = before
   const { versions: releases, ...fields } = after
   const url = before.repository?.url
-  if (!releaseSources.has(url) || !equal(oldFields, fields)) return false
+  if ((!releaseSources.has(url) && !publicRepository(before.name, url)) || !equal(oldFields, fields)) return false
   const known = new Map(old.map((release) => [release.version, release]))
   let additions = 0
   for (const release of releases) {
@@ -92,13 +116,7 @@ function isReleaseUpdate(before, after) {
       if (!equal(previous, release)) return false
       continue
     }
-    if (!keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines']) || !stable.test(release.version)
-      || !old.every((previous) => newer(release.version, previous.version))
-      || !keysWithin(release.source, ['type', 'url', 'commit']) || release.source.type !== 'git'
-      || release.source.url !== url || !sha.test(release.source.commit)
-      || !Number.isSafeInteger(release.publishTimestamp) || release.publishTimestamp <= 0
-      || !keysWithin(release.engines, ['agh'])
-      || (Object.hasOwn(release.engines, 'agh') && !plainText(release.engines.agh))) return false
+    if (!validRelease(release, url) || !old.every((previous) => newer(release.version, previous.version))) return false
     additions++
   }
   return additions > 0
@@ -113,7 +131,11 @@ export function catalogChange(before, after, { sameRepository, sourcesChanged })
   }
   const { plugins: old, ...oldCatalog } = before
   const { plugins, ...catalog } = after
-  if (!sourcesChanged || !equal(oldCatalog, catalog) || old.length !== plugins.length) return null
+  if (!sourcesChanged || !equal(oldCatalog, catalog)) return null
+  if (plugins.length === old.length + 1 && old.every((row, i) => equal(row, plugins[i])) && isNewListing(plugins.at(-1))) {
+    return 'new-listing'
+  }
+  if (old.length !== plugins.length) return null
   return old.every((row, i) => equal(row, plugins[i]) || isReleaseUpdate(row, plugins[i])) ? 'release-update' : null
 }
 
@@ -124,7 +146,13 @@ function readIndex(ref) {
 
 function sourceList(ref) {
   return String(checked(git(['cat-file', 'blob', `${ref}:plugins.txt`], { maxBuffer: maxIndexBytes + 1 }),
-    'Could not read the pinned source list.')).split(/\r?\n/).filter((line) => !line.trimStart().startsWith('# pin:'))
+    'Could not read the pinned source list.')).trimEnd().split(/\r?\n/)
+}
+
+function sourcesMatch(kind, base, head, next) {
+  if (kind === 'new-listing') return equal([...base, next.plugins.at(-1).repository.url], head)
+  const withoutPins = (lines) => lines.filter((line) => !line.trimStart().startsWith('# pin:'))
+  return equal(withoutPins(base), withoutPins(head))
 }
 
 function output(key, value) {
@@ -170,8 +198,9 @@ function audit() {
         continue
       }
       const sourcesChanged = changed.includes('plugins.txt')
-      const kind = catalogChange(readIndex(base), readIndex(head), { sameRepository: pr.head.repo?.full_name === repository, sourcesChanged })
-      if (!kind || (sourcesChanged && !equal(sourceList(base), sourceList(head)))) {
+      const next = readIndex(head)
+      const kind = catalogChange(readIndex(base), next, { sameRepository: pr.head.repo?.full_name === repository, sourcesChanged })
+      if (!kind || (sourcesChanged && !sourcesMatch(kind, sourceList(base), sourceList(head), next))) {
         log(`PR #${number}: catalog changes do not qualify for unattended publication.`)
         continue
       }

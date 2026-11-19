@@ -22,7 +22,17 @@ Each version pins the commit of its release tag. Until the full generator exists
 
 1. Put your plugin in its own GitHub repository with `package.json` at the root, and release it with `vX.Y.Z` tags.
 2. Add the GitHub topic `agh-plugin` to the repository, so it appears on [github.com/topics/agh-plugin](https://github.com/topics/agh-plugin).
-3. To be listed here as well, open a pull request that adds your repository URL to `plugins.txt`.
+3. Open a pull request against `main` with the repository URL in `plugins.txt` and the regenerated `docs/index.json`.
+
+For an already listed repository, keep its URL and add a line such as `# pin: https://github.com/OWNER/REPO 1.2.3 FULL_COMMIT_SHA` to `plugins.txt`. Use the actual 40-character lowercase Git commit SHA without the `v` prefix on the version. The pin must match the index; when replacing the only listed version, remove its old pin if present. A version that remains in the index cannot point to a different commit. Rebuild and review the diff: the generator can pick up unrelated tags, but CI rejects undeclared updates. For removal, remove the URL, its pins, and its index entry together.
+
+Run the required `market / validate-index` check locally from the repository root:
+
+```sh
+node tools/validate-index.mjs "$(git rev-parse origin/main)"
+```
+
+The check validates format 1, unique package names, Git sources, and consistency with `plugins.txt`. The published file must not exceed 2 MiB (2,097,152 bytes), the AGH daemon's download limit. CI does not fetch or execute plugin code and does not verify that a release tag exists; review still needs to verify the intended release.
 
 ## Listed plugins
 

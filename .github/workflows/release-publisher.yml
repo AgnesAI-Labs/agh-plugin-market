@@ -1,0 +1,95 @@
+name: Market release publisher
+
+on:
+  schedule:
+    - cron: '3,13,23,33,43,53 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Review eligible releases without merging
+        type: boolean
+        required: true
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: market-release-publisher
+  cancel-in-progress: false
+
+jobs:
+  review:
+    if: >-
+      github.repository == 'AgnesAI-Labs/agh-plugin-market' &&
+      github.ref == 'refs/heads/main' &&
+      (vars.MARKET_PUBLISHER_ENABLED == 'true' ||
+       (github.event_name == 'workflow_dispatch' && inputs.dry_run == true))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      plan: ${{ steps.audit.outputs.plan }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - uses: ./.github/actions/install-gitleaks
+      - name: Audit eligible releases without writer credentials
+        id: audit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: node tools/publish-release.mjs audit
+
+  publish:
+    needs: review
+    if: >-
+      github.repository == 'AgnesAI-Labs/agh-plugin-market' &&
+      github.ref == 'refs/heads/main' &&
+      vars.MARKET_PUBLISHER_ENABLED == 'true' &&
+      needs.review.outputs.plan != '' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.dry_run == false))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: market-publisher
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Mint repository-scoped publisher token
+        id: publisher-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ vars.MARKET_PUBLISHER_CLIENT_ID }}
+          private-key: ${{ secrets.MARKET_PUBLISHER_PRIVATE_KEY }}
+          owner: AgnesAI-Labs
+          repositories: agh-plugin-market
+          permission-contents: write
+      - name: Revalidate plan and merge the approved release
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MARKET_PUBLISHER_TOKEN: ${{ steps.publisher-token.outputs.token }}
+          PLAN: ${{ needs.review.outputs.plan }}
+        run: node tools/publish-release.mjs merge "$PLAN"
+      - name: Verify the merged release reached legacy Pages
+        if: steps.merge.outputs.merged_sha != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGED_SHA: ${{ steps.merge.outputs.merged_sha }}
+        run: node tools/publish-release.mjs verify-pages "$MERGED_SHA"

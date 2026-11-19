@@ -69,6 +69,8 @@ If `main` advances while your PR is open, update your branch and let the checks 
 
 Open the `market / review-release` report for the latest PR commit and check the findings. It scans the PR title, description, and proposed commit history for credentials, then checks added or updated indexed releases. It verifies the public `vX.Y.Z` tag and pinned commit, checks public submission proof where required, checks the root manifest, declared entry files and assets, and scans text files (including committed build output) and filenames with Gitleaks. These static checks cannot establish that a plugin is safe: they do not run plugins, install dependencies, recheck unchanged releases, or prove that binary media is safe.
 
+For automatic public admission, a plugin row's `capabilities` must be an empty object (`{}`). A package with no plugin rows does not need a capability declaration. A release requesting capabilities goes to manual review.
+
 | Result | Next step |
 | --- | --- |
 | `passed` | No findings from the configured checks. Eligible PRs may be merged by the publisher below; this is not a safety or installation guarantee. |

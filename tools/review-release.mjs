@@ -32,6 +32,7 @@ const messages = {
   PUBLIC_PROOF: 'The tagged release must include a root agh.market.json with the matching GitHub repository URL and 1–32 unique positive integer account IDs. For PRs, the author’s ID must be listed.',
   PUBLIC_IDENTITY: 'The PR author’s numeric GitHub account ID was unavailable. Review could not verify release delegation.',
   CAPABILITY_DECLARATION: 'A plugin does not declare capabilities in the expected object format.',
+  PUBLIC_CAPABILITIES: 'Public automatic admission allows no declared plugin capabilities. Review any requested capability before listing.',
   CAPABILITY_REVIEW: 'A plugin declares sensitive capabilities that need manual review.',
   INSTALL_HOOKS: 'Package install lifecycle scripts need manual review.',
   RUNTIME_DEPENDENCIES: 'Package runtime dependencies need manual review.',
@@ -239,7 +240,7 @@ const record = (value) => value !== null && typeof value === 'object' && !Array.
 const nonempty = (value) => Array.isArray(value) ? value.length > 0 : record(value) ? Object.keys(value).length > 0 : Boolean(value)
 const risky = ['network', 'network.publicRead', 'exec', 'secrets', 'credentials', 'managedServices', 'childAgents', 'subagent']
 const provides = new Set(['tool', 'loop', 'model-adapter', 'mcp', 'skills', 'ui', 'bundle', 'service'])
-function checkManifest({ paths, complete }, candidate, row) {
+function checkManifest({ paths, complete }, candidate, row, publicSubmission) {
   const json = (path) => JSON.parse(readFileSync(paths.get(path)))
   const unavailable = (path) => paths.get(path) === undefined && (!complete || paths.has(path))
   if (unavailable('package.json')) return
@@ -287,14 +288,18 @@ function checkManifest({ paths, complete }, candidate, row) {
   if (agnes.plugins?.some(({ capabilities }) => !record(capabilities))) {
     finding(row, 'CAPABILITY_DECLARATION', 'needs-review')
   }
+  if (publicSubmission && agnes.plugins?.some(({ capabilities }) => record(capabilities) && Object.keys(capabilities).length > 0)) {
+    finding(row, 'PUBLIC_CAPABILITIES', 'needs-review')
+  }
   if (agnes.plugins?.some(({ capabilities }) => record(capabilities) &&
       (risky.some((key) => nonempty(capabilities[key])) || nonempty(capabilities.filesystem?.write)))) {
     finding(row, 'CAPABILITY_REVIEW', 'needs-review')
   }
-  if (['preinstall', 'install', 'postinstall', 'prepare'].some((hook) => Object.hasOwn(pkg.scripts ?? {}, hook))) {
+  if (['preinstall', 'install', 'postinstall', 'prepublish', 'preprepare', 'prepare', 'postprepare', 'prepack', 'postpack']
+    .some((hook) => Object.hasOwn(pkg.scripts ?? {}, hook))) {
     finding(row, 'INSTALL_HOOKS', 'needs-review')
   }
-  if (['dependencies', 'optionalDependencies', 'bundledDependencies', 'bundleDependencies'].some((key) => nonempty(pkg[key]))) {
+  if (['dependencies', 'optionalDependencies', 'peerDependencies', 'bundledDependencies', 'bundleDependencies'].some((key) => nonempty(pkg[key]))) {
     finding(row, 'RUNTIME_DEPENDENCIES', 'needs-review')
   }
 }
@@ -332,7 +337,7 @@ function reviewRelease(candidate, row, root, firstListing, actor) {
   stage(row, join(payload, 'paths.txt'), `\n${[...tree.paths.keys()].join('\n')}`, 'COVERAGE')
   scan(row, payload, dirname(root), 'RELEASE_SECRET')
   if (publicSubmission && actor !== null) checkPublicProof(tree.paths, candidate.url, actor, row)
-  checkManifest(tree, candidate, row)
+  checkManifest(tree, candidate, row, publicSubmission)
 }
 
 const stateOf = (findings) => ['failed', 'incomplete', 'needs-review'].find((state) => findings.some((entry) => entry.state === state)) ?? 'passed'

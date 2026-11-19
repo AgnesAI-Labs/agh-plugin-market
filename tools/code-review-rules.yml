@@ -1,0 +1,95 @@
+rules:
+  - id: sensitive-data-outbound
+    message: Potentially sensitive input reaches an outbound request body; review the data and destination.
+    severity: WARNING
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - exact: true
+        pattern-either:
+          - pattern: process.env
+          - pattern: Bun.env
+          - pattern: Deno.env.get(...)
+          - pattern: Deno.env.toObject()
+          - pattern: document.cookie
+    pattern-sinks:
+      - patterns:
+          # Focus on the payload, not the URL, headers, or other request options.
+          - pattern-either:
+              - pattern: 'fetch($URL, {..., body: $BODY, ...})'
+              - pattern: 'globalThis.fetch($URL, {..., body: $BODY, ...})'
+              - pattern: axios.post($URL, $BODY, ...)
+              - pattern: axios.put($URL, $BODY, ...)
+              - pattern: axios.patch($URL, $BODY, ...)
+              - pattern: 'axios({..., data: $BODY, ...})'
+              - pattern: 'axios.request({..., data: $BODY, ...})'
+              - pattern: navigator.sendBeacon($URL, $BODY)
+          - focus-metavariable: $BODY
+
+  - id: remote-content-execution
+    message: Downloaded response content reaches a code evaluation or process execution argument; review the trust boundary.
+    severity: WARNING
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - exact: true
+        label: FETCH_RESPONSE
+        pattern-either:
+          - pattern: fetch(...)
+          - pattern: globalThis.fetch(...)
+      # A fetch result alone is not downloaded code. Require a local flow
+      # from that result through a recognized response body reader.
+      - exact: true
+        label: RESPONSE_CONTENT
+        requires: FETCH_RESPONSE
+        pattern-either:
+          - pattern: $RESPONSE.text()
+          - pattern: $RESPONSE.json()
+          - pattern: $RESPONSE.arrayBuffer()
+    pattern-sinks:
+      - requires: RESPONSE_CONTENT
+        patterns:
+          - pattern-either:
+              - pattern: eval($CODE)
+              - pattern: globalThis.eval($CODE)
+              - pattern: Function(..., $CODE)
+              - pattern: new Function(..., $CODE)
+              - patterns:
+                  # Restrict process calls to recognized Node module bindings.
+                  # For spawn/execFile the executable is evidence; ordinary argv is not.
+                  - pattern-either:
+                      - pattern: require("$MODULE").$METHOD($CODE, ...)
+                      - patterns:
+                          - pattern-either:
+                              - pattern-inside: |
+                                  $CHILD = require("$MODULE");
+                                  ...
+                              - pattern-inside: |
+                                  import * as $CHILD from "$MODULE";
+                                  ...
+                              - pattern-inside: |
+                                  import $CHILD from "$MODULE";
+                                  ...
+                          - pattern: $CHILD.$METHOD($CODE, ...)
+                      - patterns:
+                          - pattern-inside: |
+                              import { ..., $METHOD, ... } from "$MODULE";
+                              ...
+                          - pattern: $METHOD($CODE, ...)
+                      - patterns:
+                          - pattern-either:
+                              - pattern-inside: |
+                                  import { ..., $METHOD as $RUN, ... } from "$MODULE";
+                                  ...
+                              - pattern-inside: |
+                                  $RUN = require("$MODULE").$METHOD;
+                                  ...
+                          - pattern: $RUN($CODE, ...)
+                  - metavariable-regex:
+                      metavariable: $MODULE
+                      regex: >-
+                        ^(['"]?)(?:node:)?child_process\1$
+                  - metavariable-regex:
+                      metavariable: $METHOD
+                      regex: '^(?:exec|execFile|spawn)(?:Sync)?$'
+          - focus-metavariable: $CODE

@@ -22,48 +22,7 @@
 
 ### 提交新的公开插件
 
-1. 将插件放在独立的公开 GitHub 仓库中，`package.json` 放在根目录。包名采用 `@<小写的 GitHub 仓库所有者>/<名称>`：例如 `https://github.com/Octo-Cat/agh-example` 可以用 `@octo-cat/example`。`agnes`、`agnesai`、`agnes-ai`、`agnesai-labs`、`agnes-harness`、`agnes-showcase` 是保留作用域，不区分大小写。
-2. 在要打 tag 的提交中，将 `agh.market.json` 放在插件仓库根目录。以将要提交市场 PR 的 GitHub 账号登录，运行 `gh api user --jq .id`。将下面的 `12345` 换成查到的数字账号 ID（不是用户名，也不要加引号）：
-
-   ```json
-   {
-     "repository": "https://github.com/Octo-Cat/agh-example",
-     "submitters": [12345]
-   }
-   ```
-
-   只允许这两个字段。`repository` 必须是标准的 `https://github.com/OWNER/REPO` 地址，且与索引中的 Git 来源一致（不区分大小写）。`submitters` 必须包含 1–32 个互不重复的正数，且每个数都必须是安全整数。公开 tag 表明发布者授权这些账号投稿；发布作业核对的是发起 PR 的账号，而不是 Git 提交作者。文件只在插件仓库默认分支上还不够，必须存在于 tag 指向的那个提交中。
-3. 发布与 `package.json` 版本一致的稳定版 `vX.Y.Z` tag，并添加 `agh-plugin` 话题，方便其他人在 [github.com/topics/agh-plugin](https://github.com/topics/agh-plugin) 找到插件。确认该 tag 可直接从此公开仓库访问（不能依赖重定向），并确认其指向的提交正是 `source.commit` 要填的 40 位小写 SHA。例如：
-
-   ```sh
-   GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c http.followRedirects=false ls-remote --exit-code \
-     https://github.com/Octo-Cat/agh-example 'refs/tags/v1.2.3' 'refs/tags/v1.2.3^{}'
-   ```
-
-   如果是附注 tag（annotated tag），请用 `^{}` 那一行的提交 SHA，而不是 tag 对象的 SHA。
-4. 如果没有本市场仓库的写入权限，请先 fork，将 fork 同步到上游最新的 `main`，再从该提交创建分支。用 fork 中的分支向 `AgnesAI-Labs/agh-plugin-market:main` 提 PR。不要求加入组织或团队。
-5. 在 `plugins.txt` 末尾只追加一行标准仓库 URL。在 `docs/index.json` 的 `plugins` 数组末尾只追加一个插件条目，其中仅有一个固定到 tag 所指提交的稳定版本。已有行、已有条目、索引顶层字段和其他文件均保持不变。首次上架不需要 `# pin` 行。
-
-用 `node tools/build-index.mjs <放各仓库克隆的目录>` 生成候选条目。`plugins.txt` 中的每个仓库都要克隆到该目录的同名子目录，并拉取发版 tag。请在已追加 URL 的临时工作副本中运行：生成器会覆盖 `docs/index.json`，也可能纳入其他仓库的新 tag。**只把候选条目**复制到 PR 分支的索引中，并确认生成器选中了预期的版本和提交。
-
-`title` 和 `description` 是可选的展示文案，可用普通字符串，也可按 `en` 和/或 `zh-cn` 填写。`author` 可省略；若填写，必须与 GitHub 仓库所有者的用户名或组织名一致（不区分大小写）。对于使用仓库所有者作用域的包，生成器会自动填入该名称。`homepage` 可以省略；若填写，必须是同一 GitHub 仓库的 HTTPS 地址。`repository` 只含 `url`。元数据沿用生成器的格式：`keywords` 取插件清单中的关键词或用 `[]`，`labels` 为空数组 `[]`，`sortKeys` 为空对象 `{}`。
-
-### 更新或下架已有插件
-
-更新版本时，保留仓库 URL，再在 `plugins.txt` 添加一行 `# pin: https://github.com/OWNER/REPO 1.2.3 FULL_COMMIT_SHA`，填入实际的 40 位小写提交 SHA，版本不加 `v`。固定值必须和索引一致；替换唯一的已列版本时，若有旧固定行，一并移除。索引中保留的版本不得换绑提交。对于使用仓库所有者作用域的公开插件，新 tag 所指的提交也必须含有效的 `agh.market.json`，授权发起该更新 PR 的账号。只把生成器产出的目标版本变更复制到索引并核对差异；CI 会拒绝未声明的更新。下架时同时移除 URL、对应的固定行和索引条目。
-
-### 检查投稿
-
-可在仓库根目录本地运行必需检查 `market / validate-index`。如果 fork 尚未配置上游远程仓库，先运行一次 `git remote add upstream https://github.com/AgnesAI-Labs/agh-plugin-market.git`。如果 `origin` 已指向市场原仓库，把下面的 `upstream` 换成 `origin`：
-
-```sh
-git fetch upstream main
-node tools/validate-index.mjs "$(git rev-parse upstream/main)"
-```
-
-索引检查覆盖 format 1、包名唯一性、Git 来源和 `plugins.txt` 一致性。发布文件不得超过 2 MiB（2,097,152 字节），这是 AGH daemon 的下载上限。该检查离线运行，不验证 tag 是否存在。
-
-如果 PR 审核期间 `main` 有新提交，请先更新分支，再等待新提交上的检查。
+请阅读[公开插件上架教程](docs/submit-plugin.zh-CN.md)，按步骤准备插件和发版授权、提交并检查市场 PR，以及确认上架、更新版本或下架。
 
 ### 发版审核（仅报告）
 

@@ -32,9 +32,22 @@ Run the required `market / validate-index` check locally from the repository roo
 node tools/validate-index.mjs "$(git rev-parse origin/main)"
 ```
 
-The check validates format 1, unique package names, Git sources, and consistency with `plugins.txt`. The published file must not exceed 2 MiB (2,097,152 bytes), the AGH daemon's download limit. CI does not fetch or execute plugin code and does not verify that a release tag exists; review still needs to verify the intended release.
+The index check validates format 1, unique package names, Git sources, and consistency with `plugins.txt`. The published file must not exceed 2 MiB (2,097,152 bytes), the AGH daemon's download limit. This check is offline and does not verify that a release tag exists.
 
 If `main` advances while your PR is open, update your branch before merging and let the check run on the new head.
+
+### Release review (report only)
+
+`market / review-release` links to a report for the current PR commit. It scans the PR title, description and proposed commit history for credentials, then checks added or updated indexed releases. It verifies the public `vX.Y.Z` tag and pinned commit, checks the root manifest, declared entry files and assets, and scans the Git tree (including committed build output) with Gitleaks. It does not run the plugin, install dependencies, or recheck unchanged releases.
+
+| Result | Next step |
+| --- | --- |
+| `passed` | No findings from the configured checks. Continue normal review; this is not a safety or installation guarantee. |
+| `needs-review` | Check flagged publishers, licenses, sensitive capabilities, or content the scanner could not inspect. The initial publisher policy refers repositories outside `AgnesAI-Labs` for manual review; it does not grant trust to organization repositories. |
+| `failed` | Fix the indicated release or PR issue and push a new revision. For potential credentials, verify privately and revoke or rotate anything exposed before cleaning the history and submitting a clean release. The report does not include matching values or raw scanner output. |
+| `incomplete` | Check repository/tag accessibility or retry a scanner or network failure. If a batch exceeds 12 changed releases, split the PR. |
+
+This check is advisory. It does not change merge requirements, approve a PR, merge a PR, or publish a release.
 
 ## Listed plugins
 

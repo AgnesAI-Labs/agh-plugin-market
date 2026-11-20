@@ -254,6 +254,32 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/knowledge-graph",
+      "title": {
+        "en": "Knowledge Atlas",
+        "zh-cn": "知识图谱"
+      },
+      "description": {
+        "en": "Browse a local document knowledge graph with an interactive sphere, search, and source previews.",
+        "zh-cn": "以交互球形图谱浏览本地资料，搜索文件和正文，并查看来源与摘录。"
+      },
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-knowledge-graph"
+      },
+      "versions": [
+        {
+          "version": "1.1.3",
+          "publishTimestamp": 1795170538,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-knowledge-graph",
+            "commit": "a46405ca13d2e9cc34ffefb9593bd19b08f3170e"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

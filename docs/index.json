@@ -254,6 +254,33 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/qualitative-research",
+      "title": {
+        "en": "Qualitative Research",
+        "zh-cn": "访谈主题分析"
+      },
+      "description": {
+        "en": "Analyze interview materials with three levels of coding and trace themes to original quotations.",
+        "zh-cn": "分批清洗和分析访谈材料，按三级编码提炼主题并回查原文引文。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-qualitative-research"
+      },
+      "versions": [
+        {
+          "version": "0.5.2",
+          "publishTimestamp": 1795170451,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-qualitative-research",
+            "commit": "202476072e477de59101e382f11d0b8d54fbed4b"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

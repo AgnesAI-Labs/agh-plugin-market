@@ -7,3 +7,4 @@ https://github.com/AgnesAI-Labs/agh-app-aerospace-quality
 https://github.com/lzc970718/agh-plugin-dingtalk
 https://github.com/lzc970718/agh-plugin-feishu
 https://github.com/lzc970718/agh-plugin-wechat
+https://github.com/wblxr408/agh-plugin-qualitative-research

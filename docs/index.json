@@ -254,6 +254,44 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/startup-animation",
+      "title": {
+        "en": "Agnes startup animation",
+        "zh-cn": "Agnes 开场动画"
+      },
+      "description": {
+        "en": "A short, skippable Web workbench intro with a terminal mark, light dossier and optical scan.",
+        "zh-cn": "约五秒的 Web 工作台开场。终端字符组成 Agnes 标志，经浅色档案与环形扫描揭幕。支持跳过。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-plugin-startup-animation",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-startup-animation"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "startup-animation",
+          "web-workbench"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.3.0",
+          "publishTimestamp": 1795168879,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-startup-animation",
+            "commit": "91e113b000e3dad7c3cdf6d5561c08df88b52ca4"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

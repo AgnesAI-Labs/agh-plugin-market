@@ -254,6 +254,44 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/mountain-gate",
+      "title": {
+        "en": "Agnes Harness Mountain Gate",
+        "zh-cn": "Agnes Harness 山水入户"
+      },
+      "description": {
+        "en": "A live 3D wooden-gate opening that leads into a landscape wallpaper for the Agnes Harness workbench.",
+        "zh-cn": "跟随旅人推开古门，沿 18 秒镜头进入以原山水画面为背景的 Agnes Harness 工作台。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-mountain-gate",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-mountain-gate"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "startup-animation",
+          "workbench"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "1.0.5",
+          "publishTimestamp": 1795170607,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-mountain-gate",
+            "commit": "8a817f2509bf2f03a6d30d6497d5bb0eceb88cae"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

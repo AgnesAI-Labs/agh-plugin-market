@@ -254,6 +254,32 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/video-editing-studio",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-video-editing-studio"
+      },
+      "title": {
+        "en": "Video Editing Studio",
+        "zh-cn": "视频剪辑台"
+      },
+      "description": {
+        "en": "Edit local video with storyboards, original motion samples, animated captions, and export.",
+        "zh-cn": "在 AGH 中使用自动分镜、原创动效和逐字字幕剪辑并导出本地视频。"
+      },
+      "versions": [
+        {
+          "version": "1.0.2",
+          "publishTimestamp": 1795171003,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-video-editing-studio",
+            "commit": "cbcd8f11983264a64e5c10926cd576a630c4aee3"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

@@ -254,6 +254,39 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/engineering-memory",
+      "title": {
+        "en": "Shared Engineering Memory",
+        "zh-cn": "共享工程知识库"
+      },
+      "description": {
+        "en": "Connect AGH and Antigravity to one existing local Engineering Memory service. Retrieve original notes and corrections, optionally create notes, and verify durable saves. Requires a compatible running local broker.",
+        "zh-cn": "让 AGH 与 Antigravity 连接同一个现有本地工程知识库服务。检索原文与纠正记录，可选创建笔记并确认保存状态。需要已运行的兼容本地共享服务。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-engineering-memory",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-engineering-memory"
+      },
+      "metadata": {
+        "keywords": ["agh-plugin", "basic-memory", "engineering-memory", "antigravity"],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1795171717,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-engineering-memory",
+            "commit": "073b316e8a4904f6a57b720993d4fdc591d05b5b"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

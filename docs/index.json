@@ -351,6 +351,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/qualitative-research",
+      "title": {
+        "en": "Qualitative Research",
+        "zh-cn": "访谈主题分析"
+      },
+      "description": {
+        "en": "Configuration bundle. Install and authorize the separate runtime for Qualitative Research.",
+        "zh-cn": "配置 Bundle。访谈主题分析功能由单独安装和授权的运行组件提供。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-qualitative-research"
+      },
+      "versions": [
+        {
+          "version": "0.6.1",
+          "publishTimestamp": 1795225045,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-qualitative-research",
+            "commit": "fd0938f6c469ef7418615ef8376fa3a739b079db"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

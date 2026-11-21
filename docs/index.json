@@ -256,6 +256,39 @@
       ]
     },
     {
+      "name": "@wblxr408/engineering-memory",
+      "title": {
+        "en": "Shared Engineering Memory",
+        "zh-cn": "共享工程知识库"
+      },
+      "description": {
+        "en": "Read-only engineering research Bundle for an independently configured Engineering Memory MCP connection.",
+        "zh-cn": "只读研究 Bundle。通过单独配置的工程知识库 MCP 连接检索笔记和回查原文。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-engineering-memory",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-engineering-memory"
+      },
+      "metadata": {
+        "keywords": ["agh-plugin", "basic-memory", "engineering-memory", "antigravity"],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.2.0",
+          "publishTimestamp": 1795224403,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-engineering-memory",
+            "commit": "eed333f4e6df95eaf41bab4f015e3f1c46b66ba7"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/video-editing-studio",
       "repository": {
         "url": "https://github.com/wblxr408/agh-video-editing-studio"
@@ -265,17 +298,17 @@
         "zh-cn": "视频剪辑台"
       },
       "description": {
-        "en": "Edit local video with storyboards, original motion samples, animated captions, and export.",
-        "zh-cn": "在 AGH 中使用自动分镜、原创动效和逐字字幕剪辑并导出本地视频。"
+        "en": "Configuration bundle. Install and authorize the separate runtime for Video Editing Studio.",
+        "zh-cn": "配置 Bundle。视频剪辑台功能由单独安装和授权的运行组件提供。"
       },
       "versions": [
         {
-          "version": "1.0.2",
-          "publishTimestamp": 1795171003,
+          "version": "2.0.0",
+          "publishTimestamp": 1795224890,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-video-editing-studio",
-            "commit": "cbcd8f11983264a64e5c10926cd576a630c4aee3"
+            "commit": "062ca503779be43c60e778c8a1fc6c09b856dd53"
           },
           "engines": {}
         }

@@ -416,6 +416,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/submitflow",
+      "title": {
+        "en": "SubmitFlow Job Tracker",
+        "zh-cn": "岗位与投递工作台"
+      },
+      "description": {
+        "en": "Search jobs, review saved listings and application timelines, and optionally update local tracking records.",
+        "zh-cn": "检索岗位、收藏和投递阶段，读取时间线做周复盘，可选更新本地追踪记录。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-submitflow"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227914,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-submitflow",
+            "commit": "136db99942fdf85b0a9c503b273a256b444c8c0a"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

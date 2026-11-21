@@ -696,6 +696,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/artex-evidence-review",
+      "title": {
+        "en": "ARTEX Audit Evidence Review",
+        "zh-cn": "ARTEX 审计证据复核"
+      },
+      "description": {
+        "en": "Reconcile existing audit evidence and remediation records into a traceable findings register.",
+        "zh-cn": "复核既有审计证据、整改和修复验证，形成可追溯的发现清单。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-artex-evidence-review"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795242076,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-artex-evidence-review",
+            "commit": "04342843f001707605d4229d6a231e6fca5b3491"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

@@ -416,6 +416,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/adrs",
+      "title": {
+        "en": "ADRS Research Desk",
+        "zh-cn": "深度研究任务台"
+      },
+      "description": {
+        "en": "Start owner-approved research, inspect status, and read retained reports and source evidence.",
+        "zh-cn": "提交经所有者确认的研究题目，查看进度，读取报告版本和原文证据。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-adrs"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227912,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-adrs",
+            "commit": "92ef9d1e6b8485ed6625daacc34debebac8b0e4d"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

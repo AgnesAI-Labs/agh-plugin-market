@@ -10,4 +10,5 @@ https://github.com/lzc970718/agh-plugin-wechat
 https://github.com/wblxr408/agh-engineering-memory
 https://github.com/wblxr408/agh-plugin-startup-animation
 https://github.com/wblxr408/agh-plugin-knowledge-graph
+https://github.com/wblxr408/agh-plugin-qualitative-research
 https://github.com/wblxr408/agh-mountain-gate

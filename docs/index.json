@@ -304,12 +304,12 @@
       },
       "versions": [
         {
-          "version": "0.6.0",
-          "publishTimestamp": 1795224888,
+          "version": "0.6.1",
+          "publishTimestamp": 1795225045,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-plugin-qualitative-research",
-            "commit": "3989d4c1b71de27b7e80e4a897491a450eb181b1"
+            "commit": "fd0938f6c469ef7418615ef8376fa3a739b079db"
           },
           "engines": {}
         }

@@ -642,6 +642,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/delivery-workflows",
+      "title": {
+        "en": "Project Delivery Workflows",
+        "zh-cn": "项目交付与 Skill 定制"
+      },
+      "description": {
+        "en": "Adapt reference projects into demos and package Skills around representative workflows.",
+        "zh-cn": "复用参考项目完成演示，按代表任务定制和打包 Skill。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-delivery-workflows"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795229944,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-delivery-workflows",
+            "commit": "9e45d2e798f6fca296875a05723d1ceb45dcc9fa"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

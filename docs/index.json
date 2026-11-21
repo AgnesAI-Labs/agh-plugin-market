@@ -378,6 +378,44 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/mountain-gate",
+      "title": {
+        "en": "Agnes Harness Mountain Gate",
+        "zh-cn": "Agnes Harness 山水入户"
+      },
+      "description": {
+        "en": "Configuration bundle. Install and authorize the separate runtime for Mountain Gate.",
+        "zh-cn": "配置 Bundle。山水入户功能由单独安装和授权的运行组件提供。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-mountain-gate",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-mountain-gate"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "startup-animation",
+          "workbench"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "2.0.0",
+          "publishTimestamp": 1795224890,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-mountain-gate",
+            "commit": "0a8384755006652bc5c027d1cf8b160029ac15bf"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

@@ -497,6 +497,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/contextrail",
+      "title": {
+        "en": "ContextRail Evidence Handoff",
+        "zh-cn": "任务交接与证据回读"
+      },
+      "description": {
+        "en": "Find the exact handoff and retrieve bounded original task evidence using the configured ContextRail MCP.",
+        "zh-cn": "从已配置的 ContextRail MCP 找到任务交接与最新纠正，按原始引用回读取证。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-contextrail"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227913,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-contextrail",
+            "commit": "7f0bd83aa18992e5b675e69a72aa6b16b8726ac4"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

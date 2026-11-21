@@ -16,3 +16,4 @@ https://github.com/wblxr408/agh-plugin-messy-etl
 https://github.com/wblxr408/agh-plugin-career-map
 https://github.com/wblxr408/agh-plugin-adrs
 https://github.com/wblxr408/agh-plugin-contextrail
+https://github.com/wblxr408/agh-plugin-submitflow

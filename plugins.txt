@@ -20,3 +20,4 @@ https://github.com/wblxr408/agh-plugin-submitflow
 https://github.com/wblxr408/agh-plugin-field-distiller
 # pin: https://github.com/wblxr408/agh-plugin-messy-etl 1.0.1 b86a4c0c4d4ce4c902306c5d962991da38e2082a
 https://github.com/wblxr408/agh-plugin-research-workflows
+https://github.com/wblxr408/agh-plugin-learning-card-workflow

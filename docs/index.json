@@ -416,6 +416,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/field-distiller",
+      "title": {
+        "en": "Troubleshooting Skill Distiller",
+        "zh-cn": "排障记录转 Skill"
+      },
+      "description": {
+        "en": "Extract successful steps and failed approaches from a troubleshooting trace and draft a reviewable SKILL.md.",
+        "zh-cn": "从排障轨迹提取成功路径、失败原因和证据，生成待审核的 SKILL.md。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-field-distiller"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227916,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-field-distiller",
+            "commit": "57920a2dd727b7df0a6d532e529f0cb674623ba2"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

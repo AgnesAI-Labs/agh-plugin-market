@@ -606,11 +606,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1795229719,
+          "publishTimestamp": 1795229943,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-plugin-research-workflows",
-            "commit": "13630274207c99d8bb3cb6fefa71c5ed8acf73cd"
+            "commit": "644da1a92850122daeea5a14ad4635b77557d4c1"
           },
           "engines": {}
         }

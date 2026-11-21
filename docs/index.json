@@ -606,11 +606,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1795229720,
+          "publishTimestamp": 1795229944,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-plugin-learning-card-workflow",
-            "commit": "108bc52e9587963e794ac71765bf641628358559"
+            "commit": "03678dd48b01921faf64eed4cebb07ff7b5d8ccb"
           },
           "engines": {}
         }

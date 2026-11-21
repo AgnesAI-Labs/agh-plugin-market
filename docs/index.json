@@ -262,8 +262,8 @@
         "zh-cn": "共享工程知识库"
       },
       "description": {
-        "en": "Connect AGH and Antigravity to one existing local Engineering Memory service. Retrieve original notes and corrections, optionally create notes, and verify durable saves. Requires a compatible running local broker.",
-        "zh-cn": "让 AGH 与 Antigravity 连接同一个现有本地工程知识库服务。检索原文与纠正记录，可选创建笔记并确认保存状态。需要已运行的兼容本地共享服务。"
+        "en": "Read-only engineering research Bundle for an independently configured Engineering Memory MCP connection.",
+        "zh-cn": "只读研究 Bundle。通过单独配置的工程知识库 MCP 连接检索笔记和回查原文。"
       },
       "author": "wblxr408",
       "homepage": "https://github.com/wblxr408/agh-engineering-memory",
@@ -277,12 +277,12 @@
       },
       "versions": [
         {
-          "version": "0.1.0",
-          "publishTimestamp": 1795171717,
+          "version": "0.2.0",
+          "publishTimestamp": 1795224403,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-engineering-memory",
-            "commit": "073b316e8a4904f6a57b720993d4fdc591d05b5b"
+            "commit": "eed333f4e6df95eaf41bab4f015e3f1c46b66ba7"
           },
           "engines": {}
         }

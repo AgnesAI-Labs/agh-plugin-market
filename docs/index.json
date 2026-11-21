@@ -445,6 +445,33 @@
       ]
     },
     {
+      "name": "@wblxr408/career-map",
+      "title": {
+        "en": "LLM Career Map",
+        "zh-cn": "大模型学习与面试地图"
+      },
+      "description": {
+        "en": "Search topic criteria and navigate six role routes with prerequisite topics and source links.",
+        "zh-cn": "搜索学习主题与完成标准，按六条岗位路线导航并查看前置知识和来源。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-career-map"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227910,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-career-map",
+            "commit": "7ab40270d52f29eb72d6813df8ec8932db468d8b"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/submitflow",
       "title": {
         "en": "SubmitFlow Job Tracker",

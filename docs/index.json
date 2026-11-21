@@ -418,6 +418,33 @@
       ]
     },
     {
+      "name": "@wblxr408/messy-etl",
+      "title": {
+        "en": "Document Reconciliation",
+        "zh-cn": "单据核对台"
+      },
+      "description": {
+        "en": "Use the runtime agent to parse CSV or TSV, review uncertain rows, confirm reconciliation and export CSV.",
+        "zh-cn": "在运行组件的智能体中清洗 CSV 或 TSV，复核低置信度行，确认对账并导出 CSV。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-messy-etl"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227907,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-messy-etl",
+            "commit": "559ea5cafc0994ec033ea329843b6543e512309d"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/career-map",
       "title": {
         "en": "LLM Career Map",

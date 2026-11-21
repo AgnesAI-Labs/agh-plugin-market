@@ -14,4 +14,5 @@ https://github.com/wblxr408/agh-plugin-qualitative-research
 https://github.com/wblxr408/agh-mountain-gate
 https://github.com/wblxr408/agh-plugin-messy-etl
 https://github.com/wblxr408/agh-plugin-career-map
+https://github.com/wblxr408/agh-plugin-adrs
 https://github.com/wblxr408/agh-plugin-field-distiller

@@ -256,14 +256,47 @@
       ]
     },
     {
+      "name": "@wblxr408/engineering-memory",
+      "title": {
+        "en": "Shared Engineering Memory",
+        "zh-cn": "共享工程知识库"
+      },
+      "description": {
+        "en": "Read-only engineering research Bundle for an independently configured Engineering Memory MCP connection.",
+        "zh-cn": "只读研究 Bundle。通过单独配置的工程知识库 MCP 连接检索笔记和回查原文。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-engineering-memory",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-engineering-memory"
+      },
+      "metadata": {
+        "keywords": ["agh-plugin", "basic-memory", "engineering-memory", "antigravity"],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.2.0",
+          "publishTimestamp": 1795224403,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-engineering-memory",
+            "commit": "eed333f4e6df95eaf41bab4f015e3f1c46b66ba7"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/qualitative-research",
       "title": {
         "en": "Qualitative Research",
         "zh-cn": "访谈主题分析"
       },
       "description": {
-        "en": "Analyze interview materials with three levels of coding and trace themes to original quotations.",
-        "zh-cn": "分批清洗和分析访谈材料，按三级编码提炼主题并回查原文引文。"
+        "en": "Configuration bundle. Install and authorize the separate runtime for Qualitative Research.",
+        "zh-cn": "配置 Bundle。访谈主题分析功能由单独安装和授权的运行组件提供。"
       },
       "author": "wblxr408",
       "repository": {
@@ -271,12 +304,12 @@
       },
       "versions": [
         {
-          "version": "0.5.2",
-          "publishTimestamp": 1795170451,
+          "version": "0.6.0",
+          "publishTimestamp": 1795224888,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-plugin-qualitative-research",
-            "commit": "202476072e477de59101e382f11d0b8d54fbed4b"
+            "commit": "3989d4c1b71de27b7e80e4a897491a450eb181b1"
           },
           "engines": {}
         }

@@ -588,6 +588,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/learning-card-workflow",
+      "title": {
+        "en": "Learning Card Workflow",
+        "zh-cn": "概念解卡与学习卡"
+      },
+      "description": {
+        "en": "Explain a difficult step and make study cards with sources and self-checks.",
+        "zh-cn": "逐步讲解公式、代码与概念，产出含来源和自测的学习卡。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-learning-card-workflow"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795229720,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-learning-card-workflow",
+            "commit": "108bc52e9587963e794ac71765bf641628358559"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

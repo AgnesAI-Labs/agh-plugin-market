@@ -327,6 +327,32 @@
       ]
     },
     {
+      "name": "@wblxr408/knowledge-graph",
+      "title": {
+        "en": "Knowledge Atlas",
+        "zh-cn": "知识图谱"
+      },
+      "description": {
+        "en": "Configuration bundle. Install and authorize the separate runtime for Knowledge Atlas.",
+        "zh-cn": "配置 Bundle。知识图谱功能由单独安装和授权的运行组件提供。"
+      },
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-knowledge-graph"
+      },
+      "versions": [
+        {
+          "version": "2.0.0",
+          "publishTimestamp": 1795224889,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-knowledge-graph",
+            "commit": "dba59087adc79e376cd25ede30d866b5d94e7566"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/mountain-gate",
       "title": {
         "en": "Agnes Harness Mountain Gate",

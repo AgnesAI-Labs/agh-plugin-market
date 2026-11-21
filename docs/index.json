@@ -289,6 +289,44 @@
       ]
     },
     {
+      "name": "@wblxr408/startup-animation",
+      "title": {
+        "en": "Agnes startup animation",
+        "zh-cn": "Agnes 开场动画"
+      },
+      "description": {
+        "en": "Configuration bundle. Install and authorize the separate runtime for AGH Startup Animation.",
+        "zh-cn": "配置 Bundle。AGH 开场动画功能由单独安装和授权的运行组件提供。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-plugin-startup-animation",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-startup-animation"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "startup-animation",
+          "web-workbench"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.4.0",
+          "publishTimestamp": 1795224887,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-startup-animation",
+            "commit": "86225c212cc4b6000470578e07f88f8e37d61ccc"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/mountain-gate",
       "title": {
         "en": "Agnes Harness Mountain Gate",

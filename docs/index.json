@@ -590,6 +590,33 @@
       ]
     },
     {
+      "name": "@wblxr408/research-workflows",
+      "title": {
+        "en": "Research Workflows",
+        "zh-cn": "科研工作流"
+      },
+      "description": {
+        "en": "Trace research claims, redraw figures from data, and revise defense slides.",
+        "zh-cn": "核对科研证据、重绘图件、修订答辩稿。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-research-workflows"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795229943,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-research-workflows",
+            "commit": "644da1a92850122daeea5a14ad4635b77557d4c1"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/learning-card-workflow",
       "title": {
         "en": "Learning Card Workflow",

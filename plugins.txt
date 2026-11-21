@@ -23,3 +23,4 @@ https://github.com/wblxr408/agh-plugin-research-workflows
 https://github.com/wblxr408/agh-plugin-learning-card-workflow
 https://github.com/wblxr408/agh-plugin-delivery-workflows
 https://github.com/wblxr408/agh-plugin-bughunter-code-review
+https://github.com/wblxr408/agh-plugin-artex-evidence-review

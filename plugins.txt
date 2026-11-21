@@ -8,3 +8,4 @@ https://github.com/lzc970718/agh-plugin-dingtalk
 https://github.com/lzc970718/agh-plugin-feishu
 https://github.com/lzc970718/agh-plugin-wechat
 https://github.com/wblxr408/agh-engineering-memory
+https://github.com/wblxr408/agh-plugin-startup-animation

@@ -669,6 +669,33 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/bughunter-code-review",
+      "title": {
+        "en": "BugHunter Defensive Code Review",
+        "zh-cn": "BugHunter 防御代码审查"
+      },
+      "description": {
+        "en": "Review local source, diffs and configuration, then write evidence-based findings and remediation.",
+        "zh-cn": "审查本地源代码、补丁和配置，按源码证据整理发现、影响范围和修复建议。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-bughunter-code-review"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795241672,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-bughunter-code-review",
+            "commit": "d345b05257f1896ddee6a80a54ada4d960398392"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

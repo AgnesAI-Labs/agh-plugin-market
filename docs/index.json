@@ -606,11 +606,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1795229720,
+          "publishTimestamp": 1795229944,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-plugin-delivery-workflows",
-            "commit": "e6f2c555159464ebe0c77d478f5db1c567e556b8"
+            "commit": "9e45d2e798f6fca296875a05723d1ceb45dcc9fa"
           },
           "engines": {}
         }

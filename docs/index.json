@@ -687,11 +687,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1795241672,
+          "publishTimestamp": 1795241840,
           "source": {
             "type": "git",
             "url": "https://github.com/wblxr408/agh-plugin-bughunter-code-review",
-            "commit": "d345b05257f1896ddee6a80a54ada4d960398392"
+            "commit": "6f165f0eee5ae36a1c8906b682c3db826d44d874"
           },
           "engines": {}
         }

@@ -254,6 +254,39 @@
           }
         }
       ]
+    },
+    {
+      "name": "@wblxr408/engineering-memory",
+      "title": {
+        "en": "Shared Engineering Memory",
+        "zh-cn": "共享工程知识库"
+      },
+      "description": {
+        "en": "Read-only engineering research Bundle for an independently configured Engineering Memory MCP connection.",
+        "zh-cn": "只读研究 Bundle。通过单独配置的工程知识库 MCP 连接检索笔记和回查原文。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-engineering-memory",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-engineering-memory"
+      },
+      "metadata": {
+        "keywords": ["agh-plugin", "basic-memory", "engineering-memory", "antigravity"],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.2.0",
+          "publishTimestamp": 1795224403,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-engineering-memory",
+            "commit": "eed333f4e6df95eaf41bab4f015e3f1c46b66ba7"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

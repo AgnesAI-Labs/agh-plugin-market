@@ -11,4 +11,17 @@ https://github.com/wblxr408/agh-engineering-memory
 https://github.com/wblxr408/agh-plugin-startup-animation
 https://github.com/wblxr408/agh-plugin-knowledge-graph
 https://github.com/wblxr408/agh-plugin-qualitative-research
+https://github.com/wblxr408/agh-mountain-gate
+https://github.com/wblxr408/agh-plugin-messy-etl
+https://github.com/wblxr408/agh-plugin-career-map
+https://github.com/wblxr408/agh-plugin-adrs
+https://github.com/wblxr408/agh-plugin-contextrail
+https://github.com/wblxr408/agh-plugin-submitflow
+https://github.com/wblxr408/agh-plugin-field-distiller
+# pin: https://github.com/wblxr408/agh-plugin-messy-etl 1.0.1 b86a4c0c4d4ce4c902306c5d962991da38e2082a
+https://github.com/wblxr408/agh-plugin-research-workflows
+https://github.com/wblxr408/agh-plugin-learning-card-workflow
+https://github.com/wblxr408/agh-plugin-delivery-workflows
+https://github.com/wblxr408/agh-plugin-bughunter-code-review
+https://github.com/wblxr408/agh-plugin-artex-evidence-review
 https://github.com/wblxr408/agh-video-editing-studio

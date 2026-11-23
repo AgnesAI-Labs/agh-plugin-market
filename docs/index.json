@@ -380,6 +380,351 @@
       ]
     },
     {
+      "name": "@wblxr408/mountain-gate",
+      "title": {
+        "en": "Agnes Harness Mountain Gate",
+        "zh-cn": "Agnes Harness 山水入户"
+      },
+      "description": {
+        "en": "Configuration bundle. Install and authorize the separate runtime for Mountain Gate.",
+        "zh-cn": "配置 Bundle。山水入户功能由单独安装和授权的运行组件提供。"
+      },
+      "author": "wblxr408",
+      "homepage": "https://github.com/wblxr408/agh-mountain-gate",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-mountain-gate"
+      },
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agnes-harness",
+          "startup-animation",
+          "workbench"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "2.0.0",
+          "publishTimestamp": 1795224890,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-mountain-gate",
+            "commit": "0a8384755006652bc5c027d1cf8b160029ac15bf"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/messy-etl",
+      "title": {
+        "en": "Document Reconciliation",
+        "zh-cn": "单据核对台"
+      },
+      "description": {
+        "en": "Use the runtime agent to parse CSV or TSV, review uncertain rows, confirm reconciliation and export CSV.",
+        "zh-cn": "在运行组件的智能体中清洗 CSV 或 TSV，复核低置信度行，确认对账并导出 CSV。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-messy-etl"
+      },
+      "versions": [
+        {
+          "version": "1.0.1",
+          "publishTimestamp": 1795228984,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-messy-etl",
+            "commit": "b86a4c0c4d4ce4c902306c5d962991da38e2082a"
+          },
+          "engines": {}
+        },
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227907,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-messy-etl",
+            "commit": "559ea5cafc0994ec033ea329843b6543e512309d"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/career-map",
+      "title": {
+        "en": "LLM Career Map",
+        "zh-cn": "大模型学习与面试地图"
+      },
+      "description": {
+        "en": "Search topic criteria and navigate six role routes with prerequisite topics and source links.",
+        "zh-cn": "搜索学习主题与完成标准，按六条岗位路线导航并查看前置知识和来源。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-career-map"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227910,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-career-map",
+            "commit": "7ab40270d52f29eb72d6813df8ec8932db468d8b"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/adrs",
+      "title": {
+        "en": "ADRS Research Desk",
+        "zh-cn": "深度研究任务台"
+      },
+      "description": {
+        "en": "Start owner-approved research, inspect status, and read retained reports and source evidence.",
+        "zh-cn": "提交经所有者确认的研究题目，查看进度，读取报告版本和原文证据。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-adrs"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227912,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-adrs",
+            "commit": "92ef9d1e6b8485ed6625daacc34debebac8b0e4d"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/contextrail",
+      "title": {
+        "en": "ContextRail Evidence Handoff",
+        "zh-cn": "任务交接与证据回读"
+      },
+      "description": {
+        "en": "Find the exact handoff and retrieve bounded original task evidence using the configured ContextRail MCP.",
+        "zh-cn": "从已配置的 ContextRail MCP 找到任务交接与最新纠正，按原始引用回读取证。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-contextrail"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227913,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-contextrail",
+            "commit": "7f0bd83aa18992e5b675e69a72aa6b16b8726ac4"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/submitflow",
+      "title": {
+        "en": "SubmitFlow Job Tracker",
+        "zh-cn": "岗位与投递工作台"
+      },
+      "description": {
+        "en": "Search jobs, review saved listings and application timelines, and optionally update local tracking records.",
+        "zh-cn": "检索岗位、收藏和投递阶段，读取时间线做周复盘，可选更新本地追踪记录。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-submitflow"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227914,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-submitflow",
+            "commit": "136db99942fdf85b0a9c503b273a256b444c8c0a"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/field-distiller",
+      "title": {
+        "en": "Troubleshooting Skill Distiller",
+        "zh-cn": "排障记录转 Skill"
+      },
+      "description": {
+        "en": "Extract successful steps and failed approaches from a troubleshooting trace and draft a reviewable SKILL.md.",
+        "zh-cn": "从排障轨迹提取成功路径、失败原因和证据，生成待审核的 SKILL.md。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-field-distiller"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795227916,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-field-distiller",
+            "commit": "57920a2dd727b7df0a6d532e529f0cb674623ba2"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/research-workflows",
+      "title": {
+        "en": "Research Workflows",
+        "zh-cn": "科研工作流"
+      },
+      "description": {
+        "en": "Trace research claims, redraw figures from data, and revise defense slides.",
+        "zh-cn": "核对科研证据、重绘图件、修订答辩稿。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-research-workflows"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795229943,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-research-workflows",
+            "commit": "644da1a92850122daeea5a14ad4635b77557d4c1"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/learning-card-workflow",
+      "title": {
+        "en": "Learning Card Workflow",
+        "zh-cn": "概念解卡与学习卡"
+      },
+      "description": {
+        "en": "Explain a difficult step and make study cards with sources and self-checks.",
+        "zh-cn": "逐步讲解公式、代码与概念，产出含来源和自测的学习卡。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-learning-card-workflow"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795229944,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-learning-card-workflow",
+            "commit": "03678dd48b01921faf64eed4cebb07ff7b5d8ccb"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/delivery-workflows",
+      "title": {
+        "en": "Project Delivery Workflows",
+        "zh-cn": "项目交付与 Skill 定制"
+      },
+      "description": {
+        "en": "Adapt reference projects into demos and package Skills around representative workflows.",
+        "zh-cn": "复用参考项目完成演示，按代表任务定制和打包 Skill。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-delivery-workflows"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795229944,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-delivery-workflows",
+            "commit": "9e45d2e798f6fca296875a05723d1ceb45dcc9fa"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/bughunter-code-review",
+      "title": {
+        "en": "BugHunter Defensive Code Review",
+        "zh-cn": "BugHunter 防御代码审查"
+      },
+      "description": {
+        "en": "Review local source, diffs and configuration, then write evidence-based findings and remediation.",
+        "zh-cn": "审查本地源代码、补丁和配置，按源码证据整理发现、影响范围和修复建议。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-bughunter-code-review"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795241840,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-bughunter-code-review",
+            "commit": "6f165f0eee5ae36a1c8906b682c3db826d44d874"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "@wblxr408/artex-evidence-review",
+      "title": {
+        "en": "ARTEX Audit Evidence Review",
+        "zh-cn": "ARTEX 审计证据复核"
+      },
+      "description": {
+        "en": "Reconcile existing audit evidence and remediation records into a traceable findings register.",
+        "zh-cn": "复核既有审计证据、整改和修复验证，形成可追溯的发现清单。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-plugin-artex-evidence-review"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795242076,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-plugin-artex-evidence-review",
+            "commit": "04342843f001707605d4229d6a231e6fca5b3491"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
       "name": "@wblxr408/video-editing-studio",
       "repository": {
         "url": "https://github.com/wblxr408/agh-video-editing-studio"

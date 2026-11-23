@@ -57,49 +57,17 @@
 
 独立的合并作业使用仓库内置的短期 `GITHUB_TOKEN`，仅请求合并已经审核的提交。它不会提交批准，也不会绕过规则：GitHub 仍要求通过 PR 合并，并通过严格的 `market / validate-index` 检查（PR 必须跟上 `main`）。无需 GitHub App、PAT、组织管理员或具有绕过权限的账号。
 
-自动合并后，GitHub Actions 会显式将 `docs/index.json` 和 `docs/.nojekyll` 部署到 Pages；手动合并到 `main` 的这两个文件的变更也会发布。[线上索引地址](https://agnesai-labs.github.io/agh-plugin-market/index.json)不变。发布验证会逐字节比较线上索引与提交中的文件。如果合并后验证超时，请用作业报告的 SHA 排查或重试 Pages 部署，不要重复合并。
+GitHub Actions 将索引、中英文目录页和两份 README 预览图一起发布到 GitHub Pages。无论目录变更是自动还是手动合并，目录页和预览图都从校验后的索引生成，不必写回 README，也不需要机器人创建 PR。[线上索引地址](https://agnesai-labs.github.io/agh-plugin-market/index.json)不变。部署会逐字节校验线上索引和目录文件。若合并后校验失败，请在 `main` 上重跑 **Market Pages**，不要重复合并。
 
 **仓库管理员配置与停用**
 
 1. 保留 `main` 上的 PR 规则和严格的 `market / validate-index` 必过检查，检查来源设为 GitHub Actions。不要添加可绕过规则的账号。在 **Settings → Pages → Build and deployment → Source** 中，将来源从 **Deploy from a branch**（`main:/docs`）切换到 **GitHub Actions**。
 2. 在 `main` 上通过 **Market release publisher → Run workflow** 运行作业，保留默认勾选的 `dry_run`。即使未启用自动发布，也可用此模式执行审核，不会合并或部署。
 3. 将仓库 Actions 变量 `MARKET_PUBLISHER_ENABLED` 设为 `true`，即可启用自动合并，也可取消勾选 `dry_run` 手动发起。删除变量或设为 `false` 将停止新的自动合并，但不影响手动合并后触发的 Pages 部署。紧急停止时，还需取消正在运行的发布作业；取消不能撤销已完成的合并。
-4. 如需回退部署配置，先停用自动发布，再将 Pages 来源切回 **Deploy from a branch → `main` → `/docs`**，然后确认原线上地址可正常访问。如需撤销已发布的索引变更，请提交回退 PR，按正常流程通过检查后合并，再验证部署结果。
-
-### 同步 README 表格
-
-**Market README sync** 将下方表格与 `main` 上的 `docs/index.json` 保持同步。它单独创建同步 PR，不依赖审核报告或插件发版 PR 的合并流程。组织策略必须允许使用仓库设置 **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**；启用后，作业才能创建 PR。作业不会批准 PR 或绕过检查。若要重试，可在 `main` 上通过 **Market README sync → Run workflow** 手动运行。
-
-在仓库根目录运行 `node tools/validate-index.mjs && node tools/sync-readmes.mjs`，即可重新生成两份表格。给同步命令加上 `--check`，可检查表格是否过期而不写入文件。
+4. 如需回退部署配置，先停用自动发布，再将 Pages 来源切回 **Deploy from a branch → `main` → `/docs`**，然后确认原线上索引地址可正常访问。分支发布仍提供索引，但不会生成目录页或预览图。如需撤销已发布的索引变更，请提交回退 PR，按正常流程通过检查后合并，再验证部署结果。
 
 ## 已收录
 
-<!-- market-list:start -->
+[打开实时插件目录](https://agnesai-labs.github.io/agh-plugin-market/plugins.zh-CN.html)，查看可复制的包名、仓库链接和最新已发布版本。GitHub 可能缓存下方预览图；若两者不同，以目录页为准。
 
-| 插件 | 包名 | 最新稳定版 |
-| --- | --- | --- |
-| [DevBoard 研发全流程工作台](https://github.com/AgnesAI-Labs/agh-app-devboard) | `@agnes-showcase/devboard` | `3.8.0` |
-| [沙叶 GMP 质量中枢](https://github.com/AgnesAI-Labs/agh-app-pharma-gmp) | `@agnes-showcase/pharma-gmp` | `1.2.5` |
-| [航天研制质量应用](https://github.com/AgnesAI-Labs/agh-app-aerospace-quality) | `@agnes-showcase/aerospace-quality` | `1.1.4` |
-| [钉钉渠道](https://github.com/lzc970718/agh-plugin-dingtalk) | `@agnes/channel-dingtalk` | `0.3.8` |
-| [飞书渠道](https://github.com/lzc970718/agh-plugin-feishu) | `@agnes/channel-feishu` | `0.1.3` |
-| [微信渠道](https://github.com/lzc970718/agh-plugin-wechat) | `@agnes/channel-wechat` | `0.1.3` |
-| [共享工程知识库](https://github.com/wblxr408/agh-engineering-memory) | `@wblxr408/engineering-memory` | `0.2.0` |
-| [Agnes 开场动画](https://github.com/wblxr408/agh-plugin-startup-animation) | `@wblxr408/startup-animation` | `0.4.0` |
-| [知识图谱](https://github.com/wblxr408/agh-plugin-knowledge-graph) | `@wblxr408/knowledge-graph` | `2.0.0` |
-| [访谈主题分析](https://github.com/wblxr408/agh-plugin-qualitative-research) | `@wblxr408/qualitative-research` | `0.6.1` |
-| [Agnes Harness 山水入户](https://github.com/wblxr408/agh-mountain-gate) | `@wblxr408/mountain-gate` | `2.0.0` |
-| [单据核对台](https://github.com/wblxr408/agh-plugin-messy-etl) | `@wblxr408/messy-etl` | `1.0.1` |
-| [大模型学习与面试地图](https://github.com/wblxr408/agh-plugin-career-map) | `@wblxr408/career-map` | `1.0.0` |
-| [深度研究任务台](https://github.com/wblxr408/agh-plugin-adrs) | `@wblxr408/adrs` | `1.0.0` |
-| [任务交接与证据回读](https://github.com/wblxr408/agh-plugin-contextrail) | `@wblxr408/contextrail` | `1.0.0` |
-| [岗位与投递工作台](https://github.com/wblxr408/agh-plugin-submitflow) | `@wblxr408/submitflow` | `1.0.0` |
-| [排障记录转 Skill](https://github.com/wblxr408/agh-plugin-field-distiller) | `@wblxr408/field-distiller` | `1.0.0` |
-| [科研工作流](https://github.com/wblxr408/agh-plugin-research-workflows) | `@wblxr408/research-workflows` | `1.0.0` |
-| [概念解卡与学习卡](https://github.com/wblxr408/agh-plugin-learning-card-workflow) | `@wblxr408/learning-card-workflow` | `1.0.0` |
-| [项目交付与 Skill 定制](https://github.com/wblxr408/agh-plugin-delivery-workflows) | `@wblxr408/delivery-workflows` | `1.0.0` |
-| [BugHunter 防御代码审查](https://github.com/wblxr408/agh-plugin-bughunter-code-review) | `@wblxr408/bughunter-code-review` | `1.0.0` |
-| [ARTEX 审计证据复核](https://github.com/wblxr408/agh-plugin-artex-evidence-review) | `@wblxr408/artex-evidence-review` | `1.0.0` |
-| [视频剪辑台](https://github.com/wblxr408/agh-video-editing-studio) | `@wblxr408/video-editing-studio` | `2.0.0` |
-
-<!-- market-list:end -->
+[![AGH 插件目录预览：插件名称、包名和最新稳定版](https://agnesai-labs.github.io/agh-plugin-market/plugins.zh-CN.svg)](https://agnesai-labs.github.io/agh-plugin-market/plugins.zh-CN.html)

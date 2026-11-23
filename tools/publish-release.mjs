@@ -1,4 +1,3 @@
-import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -253,32 +252,54 @@ function merge(text) {
   output('merged_sha', result.sha)
 }
 
-async function verifyPages(revision) {
+async function matchesPage(url, expected) {
+  try {
+    const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(5_000) })
+    if (!response.ok || !response.body) {
+      await response.body?.cancel()
+      return false
+    }
+    let size = 0
+    for await (const chunk of response.body) {
+      const end = size + chunk.length
+      if (end > expected.length || !expected.subarray(size, end).equals(chunk)) return false
+      size = end
+    }
+    return size === expected.length
+  } catch { // Pages can be unavailable while redeploying.
+    return false
+  }
+}
+
+async function verifyPages(revision, site) {
   if (!sha.test(revision ?? '') || checkedOutSha() !== revision) throw new Error('Pages verification must use the deployed checkout.')
-  const expected = checked(git(['cat-file', 'blob', `${revision}:${index}`], { maxBuffer: maxIndexBytes + 1 }), 'Cannot read deployed index.')
-  if (expected.length > maxIndexBytes) throw new Error('Deployed index is over the download limit.')
-  const url = new URL('https://agnesai-labs.github.io/agh-plugin-market/index.json')
+  const committed = checked(git(['cat-file', 'blob', `${revision}:${index}`], { maxBuffer: maxIndexBytes + 1 }), 'Cannot read deployed index.')
+  if (committed.length > maxIndexBytes) throw new Error('Deployed index is over the download limit.')
+  const staged = readFileSync(join(site, 'index.json'))
+  if (!staged.equals(committed)) throw new Error(`The staged index does not match ${revision}.`)
+
+  const assets = [
+    ['index.json', staged],
+    ...['plugins.html', 'plugins.zh-CN.html', 'plugins.svg', 'plugins.zh-CN.svg']
+      .map((name) => [name, readFileSync(join(site, name))]),
+  ].map(([name, expected]) => ({
+    name, expected, url: new URL(`https://agnesai-labs.github.io/agh-plugin-market/${name}`),
+  }))
+  let mismatches
   for (let attempt = 0; attempt < 18; attempt++) {
-    url.search = new URLSearchParams({ revision, attempt })
-    try {
-      const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(5_000) })
-      if (response.ok && response.body) {
-        const buffer = Buffer.allocUnsafe(expected.length)
-        let size = 0
-        for await (const chunk of response.body) {
-          if (size + chunk.length > buffer.length) { size = -1; break }
-          buffer.set(chunk, size)
-          size += chunk.length
-        }
-        if (size === buffer.length && buffer.equals(expected)) {
-          log(`Pages serves the exact index from ${revision}.`)
-          return
-        }
-      } else await response.body?.cancel()
-    } catch { /* Pages can be unavailable while redeploying. */ }
+    const query = new URLSearchParams({ revision, attempt }).toString()
+    const matches = await Promise.all(assets.map(({ url, expected }) => {
+      url.search = query
+      return matchesPage(url, expected)
+    }))
+    if (matches.every(Boolean)) {
+      log(`Pages serves the exact staged index and catalog assets from ${revision}.`)
+      return
+    }
+    mismatches = assets.filter((_, i) => !matches[i]).map(({ name }) => name)
     if (attempt < 17) await delay(10_000)
   }
-  throw new Error(`The published index did not match ${revision} within the verification window.`)
+  throw new Error(`Pages assets did not match ${revision} within the verification window: ${mismatches.join(', ')}.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -287,8 +308,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const [mode, arg, ...rest] = process.argv.slice(2)
     if (mode === 'audit' && !arg && rest.length === 0) audit()
     else if (mode === 'merge' && arg && rest.length === 0) merge(arg)
-    else if (mode === 'verify-pages' && arg && rest.length === 0) await verifyPages(arg)
-    else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages DEPLOYED_SHA')
+    else if (mode === 'verify-pages' && arg && rest.length === 1 && rest[0]) await verifyPages(arg, rest[0])
+    else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages DEPLOYED_SHA SITE_DIR')
   } catch (error) {
     // Unknown errors can contain API responses, commit content or other untrusted input.
     console.error(error.constructor === Error ? error.message : 'Market publication could not complete.')

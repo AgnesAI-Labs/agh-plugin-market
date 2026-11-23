@@ -57,49 +57,17 @@ Changes outside these categories, and repository or tooling changes (including c
 
 An isolated merge job uses the repository's short-lived `GITHUB_TOKEN` and requests a merge for the audited commit only. It does not post approvals or bypass any rule: GitHub still requires a pull request and the strict `market / validate-index` check (the PR must be up to date). No GitHub App, PAT, organization administrator, or bypass actor is needed.
 
-GitHub Actions explicitly deploys `docs/index.json` and `docs/.nojekyll` to Pages after an automatic merge; it also deploys changes to these files merged manually to `main`. The [public index URL](https://agnesai-labs.github.io/agh-plugin-market/index.json) is unchanged. Publication is verified by comparing the public index byte for byte with the committed file. If verification times out after a merge, use the reported SHA to diagnose or retry the Pages deployment rather than merging again.
+GitHub Actions publishes the index, both catalog pages, and both README previews together on GitHub Pages. The pages and previews are generated from the validated index after automatic and manual catalog merges; no README writeback or bot-authored PR is needed. The [public index URL](https://agnesai-labs.github.io/agh-plugin-market/index.json) is unchanged. The deployment verifies the published index and catalog assets byte for byte. If verification fails after a merge, retry **Market Pages** on `main` rather than merging again.
 
 **Repository admin setup and controls**
 
 1. Keep the `main` pull request rule and strict `market / validate-index` requirement with GitHub Actions as the check source. Do not add bypass actors. In **Settings → Pages → Build and deployment → Source**, switch from **Deploy from a branch** (`main:/docs`) to **GitHub Actions**.
 2. On `main`, use **Market release publisher → Run workflow** with `dry_run` checked (the default). This runs the audit without merging or deploying, even with automatic publishing disabled.
 3. Set the repository Actions variable `MARKET_PUBLISHER_ENABLED` to `true` to enable automatic merges or run manually with `dry_run` unchecked. Removing the variable or setting it to `false` disables new automatic merges, not Pages deployments from manual merges. To stop urgently, also cancel active publisher runs; cancellation does not undo a merge that already happened.
-4. To roll back the deployment setup, disable the publisher and switch Pages back to **Deploy from a branch → `main` → `/docs`**, then verify the same public URL. To undo a published catalog change, merge a revert PR through the normal checks and verify the resulting deployment.
-
-### Sync the README tables
-
-**Market README sync** keeps the tables below in sync with `docs/index.json` on `main`. It opens a separate PR, independent of the advisory reports and plugin release merges. The organization must permit the repository setting **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**; enable it so the workflow can open the PR. The workflow does not approve PRs or bypass checks. To retry, run **Market README sync → Run workflow** on `main`.
-
-To regenerate both tables locally, run `node tools/validate-index.mjs && node tools/sync-readmes.mjs` from the repository root. Add `--check` to the sync command to detect stale tables without writing files.
+4. To roll back the deployment setup, disable the publisher and switch Pages back to **Deploy from a branch → `main` → `/docs`**, then verify the same public index URL. Branch-based publishing serves the index but does not generate the catalog pages or previews. To undo a published catalog change, merge a revert PR through the normal checks and verify the resulting deployment.
 
 ## Listed plugins
 
-<!-- market-list:start -->
+[Browse the live plugin catalog](https://agnesai-labs.github.io/agh-plugin-market/plugins.html) for selectable text, repository links, and the latest published versions. GitHub may cache the preview below; the catalog page is the reference if they differ.
 
-| Plugin | Package | Latest stable version |
-| --- | --- | --- |
-| [DevBoard R&#38;D lifecycle workbench](https://github.com/AgnesAI-Labs/agh-app-devboard) | `@agnes-showcase/devboard` | `3.8.0` |
-| [Sableleaf GMP Quality Hub](https://github.com/AgnesAI-Labs/agh-app-pharma-gmp) | `@agnes-showcase/pharma-gmp` | `1.2.5` |
-| [Aerospace programme quality](https://github.com/AgnesAI-Labs/agh-app-aerospace-quality) | `@agnes-showcase/aerospace-quality` | `1.1.4` |
-| [DingTalk channel](https://github.com/lzc970718/agh-plugin-dingtalk) | `@agnes/channel-dingtalk` | `0.3.8` |
-| [Feishu channel](https://github.com/lzc970718/agh-plugin-feishu) | `@agnes/channel-feishu` | `0.1.3` |
-| [WeChat channel](https://github.com/lzc970718/agh-plugin-wechat) | `@agnes/channel-wechat` | `0.1.3` |
-| [Shared Engineering Memory](https://github.com/wblxr408/agh-engineering-memory) | `@wblxr408/engineering-memory` | `0.2.0` |
-| [Agnes startup animation](https://github.com/wblxr408/agh-plugin-startup-animation) | `@wblxr408/startup-animation` | `0.4.0` |
-| [Knowledge Atlas](https://github.com/wblxr408/agh-plugin-knowledge-graph) | `@wblxr408/knowledge-graph` | `2.0.0` |
-| [Qualitative Research](https://github.com/wblxr408/agh-plugin-qualitative-research) | `@wblxr408/qualitative-research` | `0.6.1` |
-| [Agnes Harness Mountain Gate](https://github.com/wblxr408/agh-mountain-gate) | `@wblxr408/mountain-gate` | `2.0.0` |
-| [Document Reconciliation](https://github.com/wblxr408/agh-plugin-messy-etl) | `@wblxr408/messy-etl` | `1.0.1` |
-| [LLM Career Map](https://github.com/wblxr408/agh-plugin-career-map) | `@wblxr408/career-map` | `1.0.0` |
-| [ADRS Research Desk](https://github.com/wblxr408/agh-plugin-adrs) | `@wblxr408/adrs` | `1.0.0` |
-| [ContextRail Evidence Handoff](https://github.com/wblxr408/agh-plugin-contextrail) | `@wblxr408/contextrail` | `1.0.0` |
-| [SubmitFlow Job Tracker](https://github.com/wblxr408/agh-plugin-submitflow) | `@wblxr408/submitflow` | `1.0.0` |
-| [Troubleshooting Skill Distiller](https://github.com/wblxr408/agh-plugin-field-distiller) | `@wblxr408/field-distiller` | `1.0.0` |
-| [Research Workflows](https://github.com/wblxr408/agh-plugin-research-workflows) | `@wblxr408/research-workflows` | `1.0.0` |
-| [Learning Card Workflow](https://github.com/wblxr408/agh-plugin-learning-card-workflow) | `@wblxr408/learning-card-workflow` | `1.0.0` |
-| [Project Delivery Workflows](https://github.com/wblxr408/agh-plugin-delivery-workflows) | `@wblxr408/delivery-workflows` | `1.0.0` |
-| [BugHunter Defensive Code Review](https://github.com/wblxr408/agh-plugin-bughunter-code-review) | `@wblxr408/bughunter-code-review` | `1.0.0` |
-| [ARTEX Audit Evidence Review](https://github.com/wblxr408/agh-plugin-artex-evidence-review) | `@wblxr408/artex-evidence-review` | `1.0.0` |
-| [Video Editing Studio](https://github.com/wblxr408/agh-video-editing-studio) | `@wblxr408/video-editing-studio` | `2.0.0` |
-
-<!-- market-list:end -->
+[![Preview of the AGH plugin catalog: plugin names, packages, and latest stable versions](https://agnesai-labs.github.io/agh-plugin-market/plugins.svg)](https://agnesai-labs.github.io/agh-plugin-market/plugins.html)

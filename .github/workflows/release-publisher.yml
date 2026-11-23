@@ -110,12 +110,3 @@ jobs:
       id-token: write
     with:
       required_merge_sha: ${{ needs.publish.outputs.merged_sha }}
-
-  sync-readmes:
-    needs: publish
-    if: needs.publish.outputs.merged_sha != ''
-    uses: ./.github/workflows/market-readmes.yml
-    permissions:
-      contents: write
-      pull-requests: write
-      statuses: write

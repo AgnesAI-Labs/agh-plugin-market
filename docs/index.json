@@ -749,6 +749,39 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@yuhe520521/reactive-resume",
+      "repository": {
+        "url": "https://github.com/yuhe520521/agh-plugin-reactive-resume"
+      },
+      "versions": [
+        {
+          "version": "0.2.0",
+          "publishTimestamp": 1795421690,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/yuhe520521/agh-plugin-reactive-resume",
+            "commit": "d24352260a758fe48c87ad777fa7af665c01d4f0"
+          },
+          "engines": {}
+        }
+      ],
+      "title": "Reactive Resume",
+      "description": "把 https://rxresu.me/mcp 暴露的 7 个 MCP 工具注册为 AGH 工具。 使用前需在 AGH 运行环境配置环境变量 RXRESUME_API_KEY（在此获取：https://rxresu.me/dashboard/settings/api-keys），配置步骤见 README。",
+      "author": "yuhe520521",
+      "homepage": "https://github.com/yuhe520521/agh-plugin-reactive-resume",
+      "metadata": {
+        "keywords": [
+          "agh-plugin",
+          "agh",
+          "plugin",
+          "reactive",
+          "resume"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      }
     }
   ]
 }

@@ -2,9 +2,9 @@
 
 English | [简体中文](submit-plugin.zh-CN.md) · [Market repository](../README.md)
 
-This guide takes you from a public GitHub plugin repository to a listing in **Plugins → Market** in Agnes Harness (AGH). Your plugin stays in your repository. You submit a two-file pull request (PR) to the market repository; the listing points to an exact Git commit rather than a branch or a moving tag.
+This guide takes you from a public GitHub plugin repository to a listing in **Plugins → Market** in Agnes Harness (AGH). Your plugin stays in your repository. In a single market pull request (PR), update the catalog data and generate both README tables. The listing points to an exact Git commit rather than a branch or a moving tag.
 
-You need a GitHub account, Git, a text editor, and permission to publish a tag in the plugin repository (or a maintainer who can publish it for you). Node.js is useful for the optional local index check; the market uses Node.js 24 in CI. There is no public-submitter allowlist or organization membership requirement. The release itself must authorize the account that opens the PR.
+You need a GitHub account, Git, a text editor, Node.js 24 (also used in CI), and permission to publish a tag in the plugin repository (or a maintainer who can publish it for you). You push to your own fork using your own GitHub account; you do not need market write access or special credentials. There is no public-submitter allowlist or organization membership requirement. The release itself must authorize the account that opens the PR.
 
 `Octo-Cat`, `agh-example`, `@octo-cat/example`, and `1.2.3` are examples throughout. Use your own repository owner, repository, package, and release version consistently in both repositories.
 
@@ -115,10 +115,10 @@ git switch -c submit-example upstream/main
 
 If you already cloned your fork, use that checkout and add the `upstream` remote only if it does not exist. If you work directly in the market repository, `origin` can serve as `upstream` in these commands; still use a separate branch.
 
-Edit only these two files:
+Make the data changes in these two files:
 
 1. In [`plugins.txt`](../plugins.txt), append one line at the end, `https://github.com/Octo-Cat/agh-example` (replace it with your URL). Do not add a `# pin:` line for the first listing.
-2. In [`docs/index.json`](index.json), paste the following **single object** after the last entry in the `plugins` array, separated from that entry by a comma. Do not add a trailing comma after the new entry or replace the whole file. Leave every existing entry, source-list line, top-level field, and other file unchanged.
+2. In [`docs/index.json`](index.json), paste the following **single object** after the last entry in the `plugins` array, separated from that entry by a comma. Do not add a trailing comma after the new entry or replace the whole file. Leave every existing entry, source-list line, and top-level field unchanged.
 
 ```json
 {
@@ -152,33 +152,53 @@ The sample omits optional display fields. If you add them to the new row:
 | `homepage` | Exactly the same URL as `repository.url`. |
 | `metadata` | Only `keywords`, `labels`, and `sortKeys`. Use `keywords` from the manifest or `[]`, up to 32 nonempty plain strings of at most 64 characters each and no `<` or `>`; use exactly `[]` for `labels` and `{}` for `sortKeys`. |
 
-The row above is otherwise complete; you do not need to clone everyone else's plugins or regenerate the catalog. Use ordinary, non-executable files for both market files and keep the index within 2 MiB (2,097,152 bytes).
+The row above is otherwise complete; you do not need to clone anyone else's plugins or rebuild the index. The two README tables are generated from the index in the next step. Keep the four submission files ordinary and non-executable and the index within 2 MiB (2,097,152 bytes).
 
 ## 5. Check the diff and open the pull request
 
-From the **market** checkout, review the diff. If Node.js is installed, run the same offline index validator used in CI against the upstream base:
+From the **market** checkout, regenerate both README tables, validate the catalog against the upstream base, and review the diff:
 
 ```sh
-git status --short
-git diff upstream/main
+git fetch upstream main
+node tools/sync-readmes.mjs
 node tools/validate-index.mjs "$(git rev-parse upstream/main)"
+git status --short
+git diff --stat upstream/main
+git diff upstream/main
 ```
 
-The validator checks the format-1 index, unique names and repositories, Git sources and commits, and agreement between the two market files. It does not fetch the tag or review the release. The diff for a first listing should contain only your new URL and your new row (plus the JSON separator). Then commit and push the branch to your fork:
+The validator checks the format-1 index, unique names and repositories, Git sources and commits, and agreement between the source list, index, and both README tables. It does not fetch the tag or review the release. The diff for a first listing should contain only your new URL, your new index row (plus the JSON separator), and its generated row in each README. Do not hand-edit either table or change surrounding README text. Then commit and push the branch to your fork:
 
 ```sh
-git add plugins.txt docs/index.json
+git add -- plugins.txt docs/index.json README.md README.zh-CN.md
 git commit -m 'List @octo-cat/example 1.2.3'
 git push -u origin submit-example
 ```
 
 On GitHub, go to the [upstream Pull requests page](https://github.com/AgnesAI-Labs/agh-plugin-market/pulls) and choose **New pull request → compare across forks**. Set the **base repository** to `AgnesAI-Labs/agh-plugin-market`, **base** to `main`, **head repository** to your fork, and **compare** to `submit-example`. Review **Files changed**, give the PR a title and description identifying the plugin and tag, and choose **Create pull request** using the authorized account. Do not include credentials in the PR or its commits. A draft will not auto-merge; mark it **Ready for review** when it is ready.
 
-If upstream `main` advances, update your branch and rerun the index check. For a branch you own, run `git fetch upstream main` and `git rebase upstream/main`. If both submissions appended entries, resolve conflicts by keeping upstream's entries intact and appending yours last. Stage the resolved files with `git add plugins.txt docs/index.json` and continue with `git rebase --continue`. Review the diff again and use `git push --force-with-lease origin submit-example` to update your rebased branch. If the plugin is already listed upstream, do not append a duplicate; use the update procedure below instead.
+If upstream `main` advances, update your existing PR branch instead of opening a new PR:
+
+```sh
+git fetch upstream main
+git merge --no-commit upstream/main
+```
+
+If the source list or index conflicts, keep the upstream rows intact and append yours last. If the plugin is already listed upstream, do not duplicate it; use the update procedure below. For a catalog-only PR, take both README files from upstream (even if they did not conflict) and regenerate the tables from the resolved data:
+
+```sh
+git restore --source=upstream/main --worktree -- README.md README.zh-CN.md
+node tools/sync-readmes.mjs
+node tools/validate-index.mjs "$(git rev-parse upstream/main)"
+git diff upstream/main
+git add -- plugins.txt docs/index.json README.md README.zh-CN.md
+```
+
+If the merge is in progress, finish it with `git merge --continue`. Otherwise commit any regenerated changes. Push to the same branch and wait for the checks on the new revision. For PRs opened before README tables were introduced, use this same update procedure before merging.
 
 ## 6. Follow review and confirm publication
 
-Open the PR's `market / validate-index` check and the `market / review-release` report for its **latest commit**. The reviewer treats the PR and release as untrusted data: it scans the PR title, description, and commit history and the changed releases' text and filenames with Gitleaks, including committed build output. It also verifies the tag, pinned commit, proof, manifest, and declared paths. It does not execute plugins, install dependencies, recheck unchanged releases, or prove a plugin or its binary media is safe.
+Open the PR's `market / validate-index` check and the `market / review-release` report for its **latest commit**. If index validation reports a stale table, sync with upstream, run `node tools/sync-readmes.mjs`, and commit and push the resulting tables. The reviewer treats the PR and release as untrusted data: it scans the PR title, description, and commit history and the changed releases' text and filenames with Gitleaks, including committed build output. It also verifies the tag, pinned commit, proof, manifest, and declared paths. It does not execute plugins, install dependencies, recheck unchanged releases, or prove a plugin or its binary media is safe.
 
 `market / code-review` is an additional [behavioral report](../README.md#behavioral-code-review-report-only) for new or changed release code. It may give you file-and-line links to inspect. This report is not required for merging and may arrive after the PR has merged; the outcomes below refer to `market / review-release`, not `market / code-review`.
 
@@ -194,16 +214,16 @@ Open the PR's `market / validate-index` check and the `market / review-release` 
 
 `needs-review`, `failed`, and `incomplete` never qualify for automatic merge. Handle the reported issue or seek maintainer review. The report is advisory; the [publisher](../README.md#unattended-review-merge-and-publish) runs a fresh review and GitHub still requires the index check on an up-to-date PR.
 
-Once merged, follow the GitHub Actions Pages deployment and look for your new name and version in the [published index](https://agnesai-labs.github.io/agh-plugin-market/index.json). Then open **Plugins → Market** in AGH, select **Community** or **All sources**, and search for your package. If the Pages index has the new version but AGH does not show it yet, the daemon may still be using its local cache. Try refreshing the view after the daemon has synchronized; the UI refresh rereads local state, not the remote index. Market listing enables discovery, not automatic installation or trust.
+Once merged, the [English](../README.md#listed-plugins) and [Chinese](../README.zh-CN.md#已收录) README tables on `main` show the new name and version. There is no separate README PR. Follow the GitHub Actions Pages deployment and verify your new version in the [live catalog](https://agnesai-labs.github.io/agh-plugin-market/plugins.html) and [published index](https://agnesai-labs.github.io/agh-plugin-market/index.json). Then open **Plugins → Market** in AGH, select **Community** or **All sources**, and search for your package. If the Pages index has the new version but AGH does not show it yet, the daemon may still be using its local cache. Try refreshing the view after the daemon has synchronized; the UI refresh rereads local state, not the remote index. Market listing enables discovery, not automatic installation or trust.
 
 ## Publish an update or remove a listing
 
-For an update, repeat the release and account-authorization steps with a new stable version **strictly higher than every version currently listed for that package**. Change only its `versions` array and the matching pins in `plugins.txt`; keep the source URL line, row order, other fields, and other listings intact. Add a pin for the new version, with no `v` prefix and the full commit SHA. For example (replace the version and SHA with the real new values):
+For an update, repeat the release and account-authorization steps with a new stable version **strictly higher than every version currently listed for that package**. In the catalog data, change only its `versions` array and the matching pins in `plugins.txt`; keep the source URL line, row order, other fields, and other listings intact. Add a pin for the new version, with no `v` prefix and the full commit SHA. For example (replace the version and SHA with the real new values):
 
 ```text
 # pin: https://github.com/Octo-Cat/agh-example 1.2.4 FULL_COMMIT_SHA
 ```
 
-If you replace an older entry, remove its old pin if present. If you keep an entry, preserve it unchanged: an indexed version cannot be pointed at a new commit. Make the new version and its pin agree, then open the PR and follow the same checks. Display-only edits to a plugin row do not qualify as automatic version updates.
+If you replace an older entry, remove its old pin if present. If you keep an entry, preserve it unchanged: an indexed version cannot be pointed at a new commit. Make the new version and its pin agree, then follow step 5 to regenerate, validate, and stage both README tables with the catalog files, and open the PR. Display-only edits to a plugin row do not qualify as automatic version updates.
 
-To remove a listing, open a PR that removes its source URL, all its pins, and its index entry together. Removals require manual review and merge.
+To remove a listing, open a PR that removes its source URL, all its pins, and its index entry together. Follow step 5 to regenerate, validate, and include the README tables so the same PR removes both display rows. Explain the reason in the PR; removals require manual review and merge.

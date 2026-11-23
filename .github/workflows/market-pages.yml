@@ -7,6 +7,7 @@ on:
       - 'docs/index.json'
       - 'docs/.nojekyll'
       - 'tools/build-market-pages.mjs'
+      - 'tools/catalog-rows.mjs'
       - '.github/workflows/market-pages.yml'
   workflow_dispatch:
   workflow_call:

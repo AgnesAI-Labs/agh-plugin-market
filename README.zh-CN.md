@@ -59,7 +59,9 @@
 
 独立的合并作业使用仓库内置的短期 `GITHUB_TOKEN`，仅请求合并已经审核的提交。它不会提交批准，也不会绕过规则：GitHub 仍要求通过 PR 合并，并通过严格的 `market / validate-index` 检查（PR 必须跟上 `main`）。无需 GitHub App、PAT、组织管理员或具有绕过权限的账号。
 
-在市场仓库根目录运行 `node tools/sync-readmes.mjs` 生成两份 README 表格，并随目录变更一起提交到同一个 PR。GitHub Actions 会用索引核对中英文表格，合并时一并更新，不需要另开 README PR，也不需要使用个人 GitHub 账号之外的凭据。随后 GitHub Actions 将索引和目录文件发布到 Pages，并逐字节验证线上文件。[线上索引地址](https://agnesai-labs.github.io/agh-plugin-market/index.json)不变。若合并后部署校验失败，请在 `main` 上重跑 **Market Pages**，不要重复合并。
+在市场仓库根目录运行 `node tools/sync-readmes.mjs` 生成两份 README 表格，并随目录变更一起提交到同一个 PR。GitHub Actions 会用索引核对中英文表格，合并时一并更新，不需要另开 README PR，也不需要使用个人 GitHub 账号之外的凭据。[线上索引地址](https://agnesai-labs.github.io/agh-plugin-market/index.json)不变。
+
+**Market Pages** 先构建并上传站点，再由独立作业部署，并将线上索引和目录文件与上传产物逐字节核对。手动与自动发布共用一把锁，从检出代码一直持有到验证结束。合并后若发布或验证失败，请在 `main` 上通过 **Actions → Market Pages → Run workflow** 发起一次新运行。不要只重跑部署作业、重跑自动发布器或重复合并 PR。
 
 **仓库管理员配置与停用**
 

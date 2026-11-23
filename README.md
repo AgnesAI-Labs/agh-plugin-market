@@ -59,7 +59,9 @@ Changes outside these categories, and repository or tooling changes (including c
 
 An isolated merge job uses the repository's short-lived `GITHUB_TOKEN` and requests a merge for the audited commit only. It does not post approvals or bypass any rule: GitHub still requires a pull request and the strict `market / validate-index` check (the PR must be up to date). No GitHub App, PAT, organization administrator, or bypass actor is needed.
 
-Generate the two README tables with `node tools/sync-readmes.mjs` from the market checkout and include them in the same PR as the catalog change. GitHub Actions checks both tables against the index. The tables update in the same merge; no separate README PR or credentials beyond your own GitHub account are needed. GitHub Actions then publishes the index and catalog assets to Pages and verifies them byte for byte. The [public index URL](https://agnesai-labs.github.io/agh-plugin-market/index.json) is unchanged. If deployment verification fails after a merge, retry **Market Pages** on `main` rather than merging again.
+Generate the two README tables with `node tools/sync-readmes.mjs` from the market checkout and include them in the same PR as the catalog change. GitHub Actions checks both tables against the index. The tables update in the same merge; no separate README PR or credentials beyond your own GitHub account are needed. The [public index URL](https://agnesai-labs.github.io/agh-plugin-market/index.json) is unchanged.
+
+**Market Pages** builds and uploads the site before a separate job deploys it and verifies the live index and catalog assets byte for byte against that artifact. Both manual and automatic publication share one lock from checkout through verification. If publication or verification fails after a merge, start a fresh **Actions → Market Pages → Run workflow** on `main`. Do not rerun only the deployment job, rerun the automatic publisher, or merge the PR again.
 
 **Repository admin setup and controls**
 

@@ -103,6 +103,6 @@ Generate the two README tables with `node tools/sync-readmes.mjs` from the marke
 | [BugHunter Defensive Code Review](https://github.com/wblxr408/agh-plugin-bughunter-code-review) | `@wblxr408/bughunter-code-review` | `1.0.0` |
 | [ARTEX Audit Evidence Review](https://github.com/wblxr408/agh-plugin-artex-evidence-review) | `@wblxr408/artex-evidence-review` | `1.0.0` |
 | [Video Editing Studio](https://github.com/wblxr408/agh-video-editing-studio) | `@wblxr408/video-editing-studio` | `2.0.0` |
-| [Reactive Resume](https://github.com/yuhe520521/agh-plugin-reactive-resume) | `@yuhe520521/reactive-resume` | `0.2.0` |
+| [Reactive Resume](https://github.com/yuhe520521/agh-plugin-reactive-resume) | `@yuhe520521/reactive-resume` | `0.2.2` |
 
 <!-- market-catalog:end -->

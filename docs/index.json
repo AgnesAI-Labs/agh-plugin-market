@@ -765,6 +765,16 @@
             "commit": "d24352260a758fe48c87ad777fa7af665c01d4f0"
           },
           "engines": {}
+        },
+        {
+          "version": "0.2.2",
+          "publishTimestamp": 1795434460,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/yuhe520521/agh-plugin-reactive-resume",
+            "commit": "de5e7db1f99eda3cae2137ba0e16cf126db6c61e"
+          },
+          "engines": {}
         }
       ],
       "title": "Reactive Resume",

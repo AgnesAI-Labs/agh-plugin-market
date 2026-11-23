@@ -723,6 +723,32 @@
           "engines": {}
         }
       ]
+    },
+    {
+      "name": "@wblxr408/video-editing-studio",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-video-editing-studio"
+      },
+      "title": {
+        "en": "Video Editing Studio",
+        "zh-cn": "视频剪辑台"
+      },
+      "description": {
+        "en": "Configuration bundle. Install and authorize the separate runtime for Video Editing Studio.",
+        "zh-cn": "配置 Bundle。视频剪辑台功能由单独安装和授权的运行组件提供。"
+      },
+      "versions": [
+        {
+          "version": "2.0.0",
+          "publishTimestamp": 1795224890,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-video-editing-studio",
+            "commit": "062ca503779be43c60e778c8a1fc6c09b856dd53"
+          },
+          "engines": {}
+        }
+      ]
     }
   ]
 }

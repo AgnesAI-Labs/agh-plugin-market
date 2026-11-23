@@ -1,5 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync, lstatSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { readmeLocales, replaceReadmeTable } from './readme-tables.mjs'
 
 // AGH community-discovery.ts limits the uncompressed response body to 2 MiB.
 const maxBytes = 2 * 1024 * 1024
@@ -7,12 +10,12 @@ const sha = /^[0-9a-f]{40}$/
 const version = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/
 const packageName = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/
 const indexPath = 'docs/index.json'
-const git = (...args) => execFileSync('git', args, { maxBuffer: maxBytes + 1024, encoding: 'utf8' })
+const git = (...args) => execFileSync('git', args, { maxBuffer: maxBytes + 1024, timeout: 60_000 })
 const fail = (message) => { throw new Error(message) }
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const text = (value) => typeof value === 'string' || (object(value) && Object.values(value).every((item) => typeof item === 'string'))
 
-function read(path, ref) {
+export function readCatalogFile(path, ref) {
   if (ref) {
     if (!/^100(?:644|755) blob /.test(git('ls-tree', ref, '--', path))) fail(`${path}: expected a regular file`)
     const blob = `${ref}:${path}`
@@ -22,7 +25,7 @@ function read(path, ref) {
   const stat = lstatSync(path)
   if (!stat.isFile()) fail(`${path}: expected a regular file`)
   if (stat.size > maxBytes) fail(`${path}: exceeds 2 MiB (${maxBytes} bytes)`)
-  return readFileSync(path, 'utf8')
+  return readFileSync(path)
 }
 
 function repository(url, where) {
@@ -34,7 +37,7 @@ function repository(url, where) {
 function readSources(ref) {
   const urls = new Set()
   const pins = new Map()
-  for (const [i, raw] of read('plugins.txt', ref).split('\n').entries()) {
+  for (const [i, raw] of readCatalogFile('plugins.txt', ref).toString('utf8').split('\n').entries()) {
     const where = `plugins.txt:${i + 1}`
     const line = raw.trim()
     if (!line) continue
@@ -55,9 +58,9 @@ function readSources(ref) {
   return { urls, pins }
 }
 
-function validate(ref) {
+export function validateIndex(ref) {
   const { urls, pins } = readSources(ref)
-  const index = JSON.parse(read(indexPath, ref))
+  const index = JSON.parse(readCatalogFile(indexPath, ref))
   if (!object(index) || index.format !== 1 || !Array.isArray(index.plugins)) fail(`${indexPath}: expected format 1 with a plugins array`)
   const names = new Set()
   const entries = new Map()
@@ -85,15 +88,31 @@ function validate(ref) {
       if (entries.get(key)?.releases.get(release) !== commit) fail(`plugins.txt: pin does not match the index for ${key}@${release}`)
     }
   }
-  return { entries, pins }
+  return { entries, pins, plugins: index.plugins }
 }
 
-try {
-  const [base, head, ...extra] = process.argv.slice(2)
-  if (extra.length || (base && !sha.test(base)) || (head && !sha.test(head))) fail('Usage: node tools/validate-index.mjs [BASE_SHA [CANDIDATE_SHA]]')
-  const current = validate(head)
+function validateReadmes(plugins, head, base, generatedOnly) {
+  for (const path of Object.keys(readmeLocales)) {
+    const candidate = readCatalogFile(path, head)
+    const template = generatedOnly ? readCatalogFile(path, base) : candidate
+    const expected = replaceReadmeTable(path, template, plugins)
+    if (!candidate.equals(expected)) {
+      fail(generatedOnly
+        ? `${path}: automatic publication allows only generated table changes`
+        : `${path}: stale catalog table; run node tools/sync-readmes.mjs`)
+    }
+  }
+}
+
+export function validateCatalog({ base, head, generatedOnly = false } = {}) {
+  if ((base !== undefined && !sha.test(base)) || (head !== undefined && (!base || !sha.test(head))) ||
+    (generatedOnly && !head)) {
+    fail('Usage: node tools/validate-index.mjs [BASE_SHA [CANDIDATE_SHA]]')
+  }
+  const current = validateIndex(head)
+  validateReadmes(current.plugins, head, base, generatedOnly)
   if (base) {
-    const previous = validate(base).entries
+    const previous = validateIndex(base).entries
     const previousRepos = new Map([...previous].map(([key, row]) => [row.name, key]))
     for (const [key, row] of current.entries) {
       if (previousRepos.has(row.name) && previousRepos.get(row.name) !== key) fail(`${row.name}: do not change the source repository of a listed package`)
@@ -114,8 +133,23 @@ try {
       if (!added && after.releases.size < before.releases.size) fail(`${key}: do not drop versions without an explicitly pinned replacement`)
     }
   }
-  console.log(`Market index valid: ${current.entries.size} plugins.`)
-} catch (error) {
-  console.error(error.message)
-  process.exitCode = 1
+  if (head) {
+    const tutorials = ['docs/submit-plugin.md', 'docs/submit-plugin.zh-CN.md']
+    const changed = git('diff', '--no-ext-diff', '--no-renames', '--name-only', '-z', base, head, '--', ...tutorials)
+      .toString('utf8').split('\0').filter(Boolean)
+    if (changed.length === 1) fail('Update both contribution tutorials together: docs/submit-plugin.md and docs/submit-plugin.zh-CN.md')
+  }
+  return current.entries.size
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    const [base, head, ...extra] = process.argv.slice(2)
+    if (extra.length) fail('Usage: node tools/validate-index.mjs [BASE_SHA [CANDIDATE_SHA]]')
+    const count = validateCatalog({ base, head })
+    console.log(`Market index, sources, and README tables valid: ${count} plugins.`)
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 1
+  }
 }

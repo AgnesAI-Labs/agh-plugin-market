@@ -7,10 +7,13 @@ import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { isDeepStrictEqual as equal } from 'node:util'
 import { publicRepository } from './public-submission.mjs'
+import { readmeLocales } from './readme-tables.mjs'
+import { validateCatalog } from './validate-index.mjs'
 
 const repository = 'AgnesAI-Labs/agh-plugin-market'
 const repoApi = `repos/${repository}`
 const index = 'docs/index.json'
+const catalogPaths = new Set([index, 'plugins.txt', ...Object.keys(readmeLocales)])
 const maxIndexBytes = 2 * 1024 * 1024
 const releaseSources = new Set([
   'https://github.com/AgnesAI-Labs/agh-app-devboard',
@@ -154,6 +157,34 @@ function sourcesMatch(kind, base, head, next) {
   return equal(withoutPins(base), withoutPins(head))
 }
 
+// Both refs have already been verified against the PR and the trusted main checkout.
+export function candidateCatalog(base, head, sameRepository) {
+  const paths = checked(git(['diff', '--no-ext-diff', '--no-renames', '--name-only', '-z', base, head]), 'Could not list PR paths.')
+  const changed = paths.toString().split('\0').slice(0, -1)
+  if (!changed.includes(index) || changed.some((path) => !catalogPaths.has(path))) {
+    return { reason: 'only catalog submissions can be merged automatically' }
+  }
+  const entries = String(checked(git(['ls-tree', head, '--', ...catalogPaths]), 'Could not read catalog Git entries.')).trimEnd().split('\n')
+  if (entries.length !== catalogPaths.size || entries.some((entry) => {
+    const match = /^100644 blob [0-9a-f]{40}\t(.+)$/.exec(entry)
+    return !match || !catalogPaths.has(match[1])
+  })) {
+    return { reason: 'catalog inputs and READMEs must be regular non-executable files' }
+  }
+  try {
+    validateCatalog({ base, head, generatedOnly: true })
+  } catch {
+    return { reason: 'index or generated-only README validation did not pass' }
+  }
+  const sourcesChanged = changed.includes('plugins.txt')
+  const next = readIndex(head)
+  const kind = catalogChange(readIndex(base), next, { sameRepository, sourcesChanged })
+  if (!kind || (sourcesChanged && !sourcesMatch(kind, sourceList(base), sourceList(head), next))) {
+    return { reason: 'catalog changes do not qualify for unattended publication' }
+  }
+  return { kind }
+}
+
 function output(key, value) {
   if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`, { flag: 'a' })
 }
@@ -177,32 +208,14 @@ function audit() {
       log(`PR #${number}: could not verify the current head against main.`)
       continue
     }
-    const paths = checked(git(['diff', '--no-ext-diff', '--no-renames', '--name-only', '-z', base, head]), 'Could not list PR paths.')
-    const changed = paths.toString().split('\0').slice(0, -1)
-    if (!changed.includes(index) || changed.some((path) => path !== index && path !== 'plugins.txt')) {
-      log(`PR #${number}: only catalog submissions can be merged automatically.`)
-      continue
-    }
-    const entries = String(checked(git(['ls-tree', head, '--', index, 'plugins.txt']), 'Could not read catalog Git entries.')).trimEnd().split('\n')
-    if (entries.length !== 2 || entries.some((entry) => !/^100644 blob [0-9a-f]{40}\t(?:docs\/index\.json|plugins\.txt)$/.test(entry))) {
-      log(`PR #${number}: catalog inputs are not both regular data files.`)
+    const { kind, reason } = candidateCatalog(base, head, pr.head.repo?.full_name === repository)
+    if (!kind) {
+      log(`PR #${number}: ${reason}.`)
       continue
     }
     const dir = mkdtempSync(join(tmpdir(), 'market-publication-'))
     try {
       const env = { ...process.env, GITHUB_OUTPUT: '', GITHUB_STEP_SUMMARY: '' }
-      const validation = run(process.execPath, ['tools/validate-index.mjs', base, head], { env })
-      if (validation.error || validation.status !== 0) {
-        log(`PR #${number}: index validation did not pass.`)
-        continue
-      }
-      const sourcesChanged = changed.includes('plugins.txt')
-      const next = readIndex(head)
-      const kind = catalogChange(readIndex(base), next, { sameRepository: pr.head.repo?.full_name === repository, sourcesChanged })
-      if (!kind || (sourcesChanged && !sourcesMatch(kind, sourceList(base), sourceList(head), next))) {
-        log(`PR #${number}: catalog changes do not qualify for unattended publication.`)
-        continue
-      }
       const event = join(dir, 'event.json')
       writeFileSync(event, JSON.stringify({ pull_request: pr }), { mode: 0o600 })
       const evidence = join(dir, 'outcome.txt')

@@ -9,7 +9,7 @@ Built a useful tool, skill, UI extension, or workflow for Agnes Harness? Share i
 ## How to submit
 
 1. In your public plugin repository, prepare `package.json` and `agh.market.json`, authorize the GitHub account that will open the PR, and push a stable `vX.Y.Z` tag.
-2. Fork [`agh-plugin-market`](https://github.com/AgnesAI-Labs/agh-plugin-market), add your listing to `plugins.txt` and `docs/index.json`, and open a PR against the upstream `main` branch.
+2. Fork [`agh-plugin-market`](https://github.com/AgnesAI-Labs/agh-plugin-market), add your listing to `plugins.txt` and `docs/index.json`, and run `node tools/sync-readmes.mjs` from the market checkout. Include both generated README tables in the same PR against the upstream `main` branch.
 3. Check the automated review report on your PR. Eligible submissions are **merged and published automatically, without manual approval**. If your submission doesn't pass, address the findings and push to the same PR to rerun the checks.
 
 Submitting for the first time? The [English submission guide](submit-plugin.md) includes copyable examples, publication checks, and instructions for updates and common review findings.

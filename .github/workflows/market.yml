@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 5
     steps:
       # On PRs the workflow and validator come from the trusted base. Never check out
-      # the contributor's tree: read only the two data blobs at its immutable SHA.
+      # the contributor's tree: read only the catalog and README blobs at its immutable SHA.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
@@ -41,13 +41,13 @@ jobs:
               -f context='market / validate-index' -f state="$1" -f description="$2" \
               -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
           }
-          report pending 'Validating the proposed market index'
-          trap 'report failure "Market index validation failed; see workflow logs"' EXIT
-          git fetch --no-tags --depth=1 origin "refs/pull/$PR_NUMBER/head"
+          report pending 'Validating the proposed market index and README tables'
+          trap 'report failure "Market index or README validation failed; see workflow logs"' EXIT
+          git fetch --no-tags --no-recurse-submodules --depth=1 origin "refs/pull/$PR_NUMBER/head"
           if [[ $(git rev-parse FETCH_HEAD) != "$HEAD_SHA" ]]; then
             echo 'The PR head moved; the new revision is checked separately.'
             exit 1
           fi
           node tools/validate-index.mjs "$BASE_SHA" "$HEAD_SHA"
-          report success 'Market index and sources are valid'
+          report success 'Market index, sources, and README tables are valid'
           trap - EXIT

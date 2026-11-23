@@ -30,6 +30,14 @@ function fixture(t) {
   const read = (path) => readFileSync(join(cwd, path))
   const git = (...args) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd, encoding: 'utf8' }).trim()
   const node = (...args) => spawnSync(process.execPath, args, { cwd, encoding: 'utf8' })
+  const topics = {}
+  const withTopics = (...args) => node('--import', `data:text/javascript,${encodeURIComponent(`
+    const topics = ${JSON.stringify(topics)}
+    globalThis.fetch = async (url) => {
+      const names = topics[url]
+      return names === undefined ? new Response(null, { status: 503 }) : Response.json({ names })
+    }
+  `)}`, ...args)
   const success = ({ status, stderr }) => assert.equal(status, 0, stderr)
   const guide = 'docs/submit-plugin.md'
   const chineseGuide = 'docs/submit-plugin.zh-CN.md'
@@ -57,11 +65,12 @@ function fixture(t) {
     cwd, put, read, setData, setIndex, catalog, guide, chineseGuide,
     snapshot: () => snapshot(base),
     sync: () => success(node(sync)),
-    validate: (head) => node(validate, base, head),
+    setTopics: (repo, names) => { topics[`https://api.github.com/repos/${repo}/topics`] = names },
+    validate: (head) => withTopics(validate, base, head),
     candidate(head, sameRepository = false) {
-      const result = node('--input-type=module', '--eval',
+      const result = withTopics('--input-type=module', '--eval',
         `import { candidateCatalog } from ${JSON.stringify(publisher)};
-         console.log(JSON.stringify(candidateCatalog(...JSON.parse(process.argv[1]))))`,
+         console.log(JSON.stringify(await candidateCatalog(...JSON.parse(process.argv[1]))))`,
         JSON.stringify([base, head, sameRepository]))
       success(result)
       return JSON.parse(result.stdout)
@@ -113,6 +122,11 @@ test('trusted validation and publisher accept pinned fork blobs only with canoni
   const english = repo.read(paths[0])
   const chinese = repo.read(paths[1])
   repo.put(paths[0], 'Broken README in the working tree (not the verified head)')
+  expectFailure(repo.validate(added), /example\/welcome: could not verify required GitHub Topic agh-plugin \(HTTP 503\)/)
+  repo.setTopics('example/welcome', ['agh-plugin-market'])
+  expectFailure(repo.validate(added), /example\/welcome: missing required GitHub Topic agh-plugin/)
+  assert.match(repo.candidate(added).reason, /submission Topic/)
+  repo.setTopics('example/welcome', ['unrelated', 'agh-plugin'])
   assert.equal(repo.validate(added).status, 0)
   assert.deepEqual(repo.candidate(added), { kind: 'new-listing' })
   repo.put(paths[0], english)
@@ -147,6 +161,11 @@ test('the same gate permits generated update rows, unchanged tables, and reviewe
   repo.setData({ ...repo.catalog, plugins: [{ ...existing, versions: [newRelease, ...existing.versions] }] })
   repo.put('plugins.txt', `${url}\n# pin: ${url} 2.0.0 ${commit}\n`)
   repo.sync()
+  expectFailure(repo.validate(repo.snapshot()), /example\/existing: could not verify required GitHub Topic agh-plugin/)
+  repo.setTopics('example/existing', [])
+  expectFailure(repo.validate(repo.snapshot()), /example\/existing: missing required GitHub Topic agh-plugin/)
+  assert.match(repo.candidate(repo.snapshot()).reason, /submission Topic/)
+  repo.setTopics('example/existing', ['agh-plugin'])
   assert.deepEqual(repo.candidate(repo.snapshot()), { kind: 'release-update' })
   const generated = repo.read(paths[0])
   repo.put(paths[0], repo.read(paths[0]).toString().replace('After the catalog.', 'Reviewed maintenance copy.'))
@@ -167,6 +186,7 @@ test('the same gate permits generated update rows, unchanged tables, and reviewe
   rmSync(join(repo.cwd, 'tools'), { recursive: true })
 
   repo.setData({ ...repo.catalog, plugins: [] })
+  repo.setTopics('example/existing', [])
   repo.sync()
   const removal = repo.snapshot()
   assert.equal(repo.validate(removal).status, 0)

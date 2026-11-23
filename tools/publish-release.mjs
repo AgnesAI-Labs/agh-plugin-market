@@ -158,7 +158,7 @@ function sourcesMatch(kind, base, head, next) {
 }
 
 // Both refs have already been verified against the PR and the trusted main checkout.
-export function candidateCatalog(base, head, sameRepository) {
+export async function candidateCatalog(base, head, sameRepository) {
   const paths = checked(git(['diff', '--no-ext-diff', '--no-renames', '--name-only', '-z', base, head]), 'Could not list PR paths.')
   const changed = paths.toString().split('\0').slice(0, -1)
   if (!changed.includes(index) || changed.some((path) => !catalogPaths.has(path))) {
@@ -172,9 +172,9 @@ export function candidateCatalog(base, head, sameRepository) {
     return { reason: 'catalog inputs and READMEs must be regular non-executable files' }
   }
   try {
-    validateCatalog({ base, head, generatedOnly: true })
+    await validateCatalog({ base, head, generatedOnly: true })
   } catch {
-    return { reason: 'index or generated-only README validation did not pass' }
+    return { reason: 'index, submission Topic, or generated-only README validation did not pass' }
   }
   const sourcesChanged = changed.includes('plugins.txt')
   const next = readIndex(head)
@@ -189,7 +189,7 @@ function output(key, value) {
   if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`, { flag: 'a' })
 }
 
-function audit() {
+async function audit() {
   const base = checkedOutSha()
   if (!sha.test(base) || mainSha() !== base) {
     log('main moved since checkout; no candidate can be authorized in this run.')
@@ -208,7 +208,7 @@ function audit() {
       log(`PR #${number}: could not verify the current head against main.`)
       continue
     }
-    const { kind, reason } = candidateCatalog(base, head, pr.head.repo?.full_name === repository)
+    const { kind, reason } = await candidateCatalog(base, head, pr.head.repo?.full_name === repository)
     if (!kind) {
       log(`PR #${number}: ${reason}.`)
       continue
@@ -319,7 +319,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   try {
     if (process.env.GITHUB_REPOSITORY !== repository || process.env.GITHUB_REF !== 'refs/heads/main') throw new Error('Publisher must run against the trusted main checkout.')
     const [mode, arg, ...rest] = process.argv.slice(2)
-    if (mode === 'audit' && !arg && rest.length === 0) audit()
+    if (mode === 'audit' && !arg && rest.length === 0) await audit()
     else if (mode === 'merge' && arg && rest.length === 0) merge(arg)
     else if (mode === 'verify-pages' && arg && rest.length === 1 && rest[0]) await verifyPages(arg, rest[0])
     else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages DEPLOYED_SHA SITE_DIR')

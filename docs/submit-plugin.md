@@ -12,6 +12,8 @@ You need a GitHub account, Git, a text editor, Node.js 24 (also used in CI), and
 
 Create or use your own **public** GitHub repository. Use its canonical URL, `https://github.com/OWNER/REPO`, without a `.git` suffix, final slash, query, or fragment. If the repository was moved or renamed, use its current URL, not a redirect.
 
+**Before opening a market PR for a new listing or version, make sure the plugin repository has the GitHub Topic `agh-plugin`.** On the plugin repository's home page, select the gear next to **About**, enter `agh-plugin` under **Topics**, and save. If you cannot edit those settings, ask a repository admin and wait until the topic appears in **About**. This is a repository topic, not a PR label or a release tag. It makes the repository discoverable on the [GitHub topic page](https://github.com/topics/agh-plugin); it does not publish the plugin by itself.
+
 Place `package.json` in the repository root. Name the package `@<lowercase-github-owner>/<name>`: for `https://github.com/Octo-Cat/agh-example`, use `@octo-cat/example`. The name after the slash starts with a lowercase letter or digit and can also contain `.`, `_`, and `-` after its first character. Keep the full package name at most 214 characters. The scopes `agnes`, `agnesai`, `agnes-ai`, `agnesai-labs`, `agnes-harness`, and `agnes-showcase` are reserved, regardless of case. The package version must be a stable `X.Y.Z` with no `v` prefix in the manifest, no prerelease or build suffix, and no leading zeroes in the components.
 
 If you are starting from scratch, this is a minimal read-only [Bundle](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/bundles-and-profiles.md). It publishes a profile that requests a read-only tool policy, without an executable plugin entry:
@@ -40,8 +42,6 @@ For your own package, choose the [plugin kind](https://github.com/AgnesAI-Labs/a
 - Commit the actual runtime files needed from Git, including build output if the manifest points to it. Local paths in `main`, `exports`, client descriptors and their entry or skin files, and declared icon or brand assets must resolve to files in the tagged tree. Use concrete export paths, not wildcard patterns. A package with explicit `agnes.plugins` entries needs `main` or `exports`; each entry needs a nonempty `export` and `apiRange`.
 - For automatic public admission, every explicit `agnes.plugins` entry must have `"capabilities": {}`. A data-only Bundle like the example has no such entries and needs no capability declaration. Declare the capabilities you actually need: nonempty capabilities, install lifecycle scripts, runtime dependencies (including optional, peer, and bundled dependencies), or sensitive API references such as environment access, network calls, or child processes require manual review.
 - Do not commit secrets or machine-local credentials. Keep the release reviewable: links, submodules, Git LFS pointers, unsupported or unsafe paths, `node_modules`, and `fixtures/out` leave gaps in review coverage. Opaque archives, native code, and unrecognized binary files are not covered; recognized media may be listed but its binary contents are not scanned. Keep the tagged tree within the review limits of 4,000 files, 8 MiB per file, and 40 MiB total.
-
-Adding the `agh-plugin` topic in the repository's **About** settings is optional. It helps people browsing [GitHub topics](https://github.com/topics/agh-plugin), but does not replace this submission or affect inclusion in the index.
 
 ### Bundle third-party JavaScript for release
 
@@ -167,7 +167,9 @@ git diff --stat upstream/main
 git diff upstream/main
 ```
 
-The validator checks the format-1 index, unique names and repositories, Git sources and commits, and agreement between the source list, index, and both README tables. It does not fetch the tag or review the release. The diff for a first listing should contain only your new URL, your new index row (plus the JSON separator), and its generated row in each README. Do not hand-edit either table or change surrounding README text. Then commit and push the branch to your fork:
+The validator checks the format-1 index, unique names and repositories, Git sources and commits, and agreement between the source list, index, and both README tables. It also queries GitHub to verify `agh-plugin` on each repository submitting a new listing or version. If GitHub rate-limits the unauthenticated request, sign in with `gh auth login` and rerun the validation command prefixed with `GH_TOKEN="$(gh auth token)"`. Do not open the PR until validation passes.
+
+The validator does not fetch the tag or review the release. The diff for a first listing should contain only your new URL, your new index row (plus the JSON separator), and its generated row in each README. Do not hand-edit either table or change surrounding README text. Then commit and push the branch to your fork:
 
 ```sh
 git add -- plugins.txt docs/index.json README.md README.zh-CN.md
@@ -200,6 +202,8 @@ If the merge is in progress, finish it with `git merge --continue`. Otherwise co
 
 Open the PR's `market / validate-index` check and the `market / review-release` report for its **latest commit**. If index validation reports a stale table, sync with upstream, run `node tools/sync-readmes.mjs`, and commit and push the resulting tables. The reviewer treats the PR and release as untrusted data: it scans the PR title, description, and commit history and the changed releases' text and filenames with Gitleaks, including committed build output. It also verifies the tag, pinned commit, proof, manifest, and declared paths. It does not execute plugins, install dependencies, recheck unchanged releases, or prove a plugin or its binary media is safe.
 
+`market / validate-index` is required for both manual and automatic merges. If it reports a missing Topic, have the plugin repository admin add `agh-plugin`, then push an updated PR branch or ask a market maintainer to rerun the check. Changing the Topic does not trigger CI by itself, and does not require a new release. If GitHub could not verify the Topic, rerun the check once access is restored.
+
 `market / code-review` is an additional [behavioral report](../README.md#behavioral-code-review-report-only) for new or changed release code. It may give you file-and-line links to inspect. This report is not required for merging and may arrive after the PR has merged; the outcomes below refer to `market / review-release`, not `market / code-review`.
 
 | Outcome or finding | What to do |
@@ -218,7 +222,7 @@ Once merged, the [English](../README.md#listed-plugins) and [Chinese](../README.
 
 ## Publish an update or remove a listing
 
-For an update, repeat the release and account-authorization steps with a new stable version **strictly higher than every version currently listed for that package**. In the catalog data, change only its `versions` array and the matching pins in `plugins.txt`; keep the source URL line, row order, other fields, and other listings intact. Add a pin for the new version, with no `v` prefix and the full commit SHA. For example (replace the version and SHA with the real new values):
+For an update, confirm the plugin repository still has the `agh-plugin` Topic, then repeat the release and account-authorization steps with a new stable version **strictly higher than every version currently listed for that package**. In the catalog data, change only its `versions` array and the matching pins in `plugins.txt`; keep the source URL line, row order, other fields, and other listings intact. Add a pin for the new version, with no `v` prefix and the full commit SHA. For example (replace the version and SHA with the real new values):
 
 ```text
 # pin: https://github.com/Octo-Cat/agh-example 1.2.4 FULL_COMMIT_SHA

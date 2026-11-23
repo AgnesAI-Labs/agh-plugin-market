@@ -104,18 +104,36 @@ function validateReadmes(plugins, head, base, generatedOnly) {
   }
 }
 
-export function validateCatalog({ base, head, generatedOnly = false } = {}) {
+async function validateTopic(repo) {
+  const headers = { Accept: 'application/vnd.github+json' }
+  if (process.env.GH_TOKEN) headers.Authorization = `Bearer ${process.env.GH_TOKEN}`
+  const response = await fetch(`https://api.github.com/repos/${repo}/topics`, {
+    headers, redirect: 'error', signal: AbortSignal.timeout(10_000),
+  }).catch(() => undefined)
+  const names = response?.ok ? (await response.json().catch(() => undefined))?.names : undefined
+  if (!Array.isArray(names) || names.some((name) => typeof name !== 'string')) {
+    const status = response && !response.ok ? ` (HTTP ${response.status})` : ''
+    fail(`${repo}: could not verify required GitHub Topic agh-plugin${status}; retry validation`)
+  }
+  if (!names.includes('agh-plugin')) {
+    fail(`${repo}: missing required GitHub Topic agh-plugin; add it in the plugin repository's About → Topics and rerun validation`)
+  }
+}
+
+export async function validateCatalog({ base, head, generatedOnly = false } = {}) {
   if ((base !== undefined && !sha.test(base)) || (head !== undefined && (!base || !sha.test(head))) ||
     (generatedOnly && !head)) {
     fail('Usage: node tools/validate-index.mjs [BASE_SHA [CANDIDATE_SHA]]')
   }
   const current = validateIndex(head)
   validateReadmes(current.plugins, head, base, generatedOnly)
+  const submissions = []
   if (base) {
     const previous = validateIndex(base).entries
     const previousRepos = new Map([...previous].map(([key, row]) => [row.name, key]))
     for (const [key, row] of current.entries) {
       if (previousRepos.has(row.name) && previousRepos.get(row.name) !== key) fail(`${row.name}: do not change the source repository of a listed package`)
+      if (!previous.has(key)) submissions.push(key)
     }
     for (const [key, before] of previous) {
       const after = current.entries.get(key)
@@ -131,6 +149,7 @@ export function validateCatalog({ base, head, generatedOnly = false } = {}) {
         }
       }
       if (!added && after.releases.size < before.releases.size) fail(`${key}: do not drop versions without an explicitly pinned replacement`)
+      if (added) submissions.push(key)
     }
   }
   if (head) {
@@ -139,6 +158,7 @@ export function validateCatalog({ base, head, generatedOnly = false } = {}) {
       .toString('utf8').split('\0').filter(Boolean)
     if (changed.length === 1) fail('Update both contribution tutorials together: docs/submit-plugin.md and docs/submit-plugin.zh-CN.md')
   }
+  for (const repo of submissions) await validateTopic(repo)
   return current.entries.size
 }
 
@@ -146,8 +166,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   try {
     const [base, head, ...extra] = process.argv.slice(2)
     if (extra.length) fail('Usage: node tools/validate-index.mjs [BASE_SHA [CANDIDATE_SHA]]')
-    const count = validateCatalog({ base, head })
-    console.log(`Market index, sources, and README tables valid: ${count} plugins.`)
+    const count = await validateCatalog({ base, head })
+    console.log(`Market index, sources, and README tables valid: ${count} plugins.${base ? ' Submission Topics verified.' : ''}`)
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1

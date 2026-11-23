@@ -24,6 +24,8 @@ Each version pins the commit of its release tag. Until the full generator exists
 
 Follow the [public plugin submission guide](docs/submit-plugin.md) to prepare a release, open a market PR, and confirm publication. It also covers updates and removals.
 
+Before opening a market PR for a new listing or version, add the `agh-plugin` Topic to the plugin repository. The required `market / validate-index` check blocks merges if the Topic is missing or cannot be verified. Existing listings and removal PRs are unaffected.
+
 ### Release review (report only)
 
 Open the `market / review-release` report for the latest PR commit and check the findings. It scans the PR title, description, and proposed commit history for credentials, then checks added or updated indexed releases. It verifies the public `vX.Y.Z` tag and pinned commit, checks public submission proof where required, checks the root manifest, declared entry files and assets, and scans text files (including committed build output) and filenames with Gitleaks. These static checks cannot establish that a plugin is safe: they do not run plugins, install dependencies, recheck unchanged releases, or prove that binary media is safe.
@@ -53,7 +55,7 @@ When enabled, **Market release publisher** runs after a successful PR index chec
 - A version update to an existing public listing in its repository-owner namespace that follows the pin and release-proof rules above, or a version update to an already indexed repository on the legacy allowlist in [`tools/publish-release.mjs`](tools/publish-release.mjs). The legacy allowlist includes `AgnesAI-Labs/agh-app-devboard`, `AgnesAI-Labs/agh-app-pharma-gmp`, and `AgnesAI-Labs/agh-app-aerospace-quality`.
 - A presentation-only change from a branch in this repository (not a fork): only the catalog's top-level `title` or `description` may change, with no changes to plugin entries or `plugins.txt`.
 
-Changes outside these categories, and repository or tooling changes (including changes to the legacy allowlist), require manual review and merge. The read-only audit uses trusted `main` code, never checks out or executes contributor code, and runs fresh index validation and release review against the current PR head. Only `passed` can proceed; `needs-review`, `failed`, and `incomplete` never qualify for automatic merge.
+Changes outside these categories, and repository or tooling changes (including changes to the legacy allowlist), require manual review and merge. The read-only audit uses trusted `main` code, never checks out or executes contributor code, and runs fresh index and Topic validation and release review against the current PR head. Only `passed` can proceed; `needs-review`, `failed`, and `incomplete` never qualify for automatic merge.
 
 An isolated merge job uses the repository's short-lived `GITHUB_TOKEN` and requests a merge for the audited commit only. It does not post approvals or bypass any rule: GitHub still requires a pull request and the strict `market / validate-index` check (the PR must be up to date). No GitHub App, PAT, organization administrator, or bypass actor is needed.
 

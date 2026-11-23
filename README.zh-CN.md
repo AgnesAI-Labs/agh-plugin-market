@@ -24,6 +24,8 @@
 
 请阅读[公开插件上架教程](docs/submit-plugin.zh-CN.md)，按步骤准备插件和发版授权、提交并检查市场 PR，以及确认上架、更新版本或下架。
 
+首次上架或提交新版前，必须在插件仓库设置 `agh-plugin` 话题。如果缺少话题或无法验证，`market / validate-index` 必过检查会阻止合并。已上架条目和下架 PR 不受影响。
+
 ### 发版审核（仅报告）
 
 打开 `market / review-release` 链接，查看 PR 最新提交的报告和具体发现。它扫描 PR 标题、描述和拟合入的提交历史中的凭据，再审核索引里新增或更新的版本。它核对公开的 `vX.Y.Z` tag 与固定提交，在需要时验证公开投稿的授权文件，检查根清单、声明入口和资源，并用 Gitleaks 扫描文本文件（含已提交的构建产物）和文件名。这些静态检查不能证明插件安全：它们不运行插件、不安装依赖、不重查未改动的版本，也不保证二进制媒体安全。
@@ -53,7 +55,7 @@
 - 更新使用仓库所有者作用域的已收录公开插件版本，且符合上述固定提交和发版授权规则；或更新已收录且在 [`tools/publish-release.mjs`](tools/publish-release.mjs) 原有白名单中的仓库版本。原有名单包括 `AgnesAI-Labs/agh-app-devboard`、`AgnesAI-Labs/agh-app-pharma-gmp` 和 `AgnesAI-Labs/agh-app-aerospace-quality`。
 - 仅修改市场展示文案，且 PR 的源分支必须在本仓库中（不能来自 fork）。只能修改索引顶层的 `title` 或 `description`，不得修改插件条目或 `plugins.txt`。
 
-超出上述类别的变更，以及仓库维护或工具变更（包括原有白名单的变更），都须人工审核并合并。只读审核作业使用可信的 `main` 代码，不检出或执行投稿者的代码，并针对 PR 当前提交重新验证索引和审核发版。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
+超出上述类别的变更，以及仓库维护或工具变更（包括原有白名单的变更），都须人工审核并合并。只读审核作业使用可信的 `main` 代码，不检出或执行投稿者的代码，并针对 PR 当前提交重新验证索引及仓库话题、审核发版。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
 
 独立的合并作业使用仓库内置的短期 `GITHUB_TOKEN`，仅请求合并已经审核的提交。它不会提交批准，也不会绕过规则：GitHub 仍要求通过 PR 合并，并通过严格的 `market / validate-index` 检查（PR 必须跟上 `main`）。无需 GitHub App、PAT、组织管理员或具有绕过权限的账号。
 

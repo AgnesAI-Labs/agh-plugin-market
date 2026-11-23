@@ -10,6 +10,8 @@
 
 为插件使用一个独立的公开 GitHub 仓库，将 `package.json` 放在根目录。仓库地址采用 `https://github.com/OWNER/REPO`，不带 `.git`、末尾斜杠、查询参数或片段，不能依赖旧地址的重定向。包名写作 `@<小写的仓库所有者>/<名称>`，作用域必须对应 GitHub 用户名或组织名，不是显示名称。后半段以小写字母或数字开头，其余可用小写字母、数字、`.`、`_` 和 `-`；包名最长 214 个字符，在索引中必须唯一。`agnes`、`agnesai`、`agnes-ai`、`agnesai-labs`、`agnes-harness`、`agnes-showcase` 是保留作用域，不区分大小写。
 
+**首次上架或提交新版之前，插件仓库必须已设置 GitHub 话题（Topic）`agh-plugin`。** 打开插件仓库首页，点击 **About** 旁的齿轮，在 **Topics** 中添加 `agh-plugin` 并保存。如果你不能编辑仓库设置，请让仓库管理员添加，等到 **About** 中能看到该话题再开市场 PR。这是插件仓库的 Topic，不是 PR 标签，也不是 Git 发版 tag。它让别人能从 [GitHub 话题页](https://github.com/topics/agh-plugin)找到该仓库，但不等于上架。
+
 `package.json` 的 `name` 和 `version` 必须与市场条目一致。`agnes.provides` 至少填写一种插件类型，各值不得重复，可选 `tool`、`loop`、`model-adapter`、`mcp`、`skills`、`ui`、`bundle`、`service`。这些标签只描述包里有什么，不授予权限。不要使用 `agnes.extensions` 或根目录下的 `agnes.extension.json`。如果已有插件，请保留实际的声明；下面是一份无需编写入口代码的只读 Bundle 示例：
 
 ```json
@@ -79,7 +81,7 @@ git tag -a v1.2.3 -m 'Release 1.2.3'
 git push origin refs/tags/v1.2.3
 ```
 
-不要求另建 GitHub Release，也不要求发布到 npm。可以在插件仓库首页 **About** 中添加 `agh-plugin` 话题，方便别人从 [GitHub 话题页](https://github.com/topics/agh-plugin)找到插件；加话题不等于上架。
+不要求另建 GitHub Release，也不要求发布到 npm。
 
 仍在插件仓库中，取出 tag 所指的提交 SHA 和该提交的 Unix 时间戳（单位是秒），并确认清单和授权文件确实在该提交里：
 
@@ -161,7 +163,9 @@ git diff --stat upstream/main
 git diff upstream/main
 ```
 
-本地检查读取索引、来源列表和两份 README 表格，不访问插件仓库，也不验证 tag 或授权。它检查 format 1、唯一包名、GitHub 仓库与索引一一对应、稳定版本、完整提交 SHA，以及已收录的包、仓库和版本没有换绑，并核对表格与索引一致。四个文件都应为不可执行的普通文件，不能是软链接；AGH 下载索引的上限是 2 MiB（2,097,152 字节）。
+本地检查核对 format 1、包名和仓库的唯一性、稳定版本、完整提交 SHA、已收录的包、仓库和版本没有换绑，以及表格与索引一致。它还会查询 GitHub，确认此次新增插件或提交新版的仓库都已设置 `agh-plugin` 话题。若遇到 GitHub API 未认证请求限流，先用 `gh auth login` 登录，在校验命令前加上 `GH_TOKEN="$(gh auth token)"` 后重跑。检查通过后再开 PR。
+
+本地检查不验证发版 tag 或授权。四个文件都应为不可执行的普通文件，不能是软链接；AGH 下载索引的上限是 2 MiB（2,097,152 字节）。
 
 首次上架的差异应只有一行来源、一个索引条目（及分隔逗号），以及两份 README 各一行生成记录。不要手改表格或周围的正文。确认后提交并推送到 fork：
 
@@ -196,6 +200,8 @@ git add -- plugins.txt docs/index.json README.md README.zh-CN.md
 
 在 PR 的检查列表中查看**最新提交**的结果。`market / validate-index` 是必过检查；如果日志提示表格过期，请同步上游、运行 `node tools/sync-readmes.mjs`，再提交并推送两份表格。`market / review-release` 是只读报告，不会批准或合并 PR，也不是 GitHub 的必过检查。索引检查通过不代表发版审核也通过；启用自动发布时，`Market release publisher` 会用可信的 `main` 代码对当前 PR 提交重新做索引检查和发版审核。PR 必须仍打开、不是草稿、跟上 `main` 且可合并，才能进入自动发布流程；只有这次复查结果为 `passed` 才可能自动合并。
 
+人工合并和自动合并都必须通过 `market / validate-index`。如果检查提示缺少话题，请让插件仓库管理员补上 `agh-plugin`，再推送 PR 分支的新提交，或请市场维护者重跑检查。修改仓库话题不会自动触发检查，也不用重发版。如果 GitHub API 暂时无法验证话题，等访问恢复后重跑。
+
 审核把 PR 和插件仓库内容当作不可信数据，不检出或运行投稿代码，也不安装依赖。它核对公开 tag、授权文件和清单，查找入口与资源，并用 Gitleaks 扫描 PR 标题、描述、拟合入的提交历史，以及新版本中的文本（含已提交的构建产物）和文件名。不重查未改动的版本，也不验证已识别媒体的二进制内容；通过静态检查不等于插件安全或一定可安装。
 
 新增或更新版本还会收到 `market / code-review` [代码行为报告](../README.zh-CN.md#代码行为审核仅报告)，可能附上待核查的文件和行号。它不参与合并判断，也可能在合并后才生成。下表的结果指 `market / review-release`，不是 `market / code-review`。
@@ -224,7 +230,7 @@ PR 合入上游 `main` 后，[中文](../README.zh-CN.md#已收录)和[英文](.
 
 ## 已上架后：发新版或下架
 
-**更新公开插件：** 先按上面的流程发布更高的稳定版，确保新 tag 的提交中有有效的授权文件，并且授权了这次发起市场 PR 的账号。市场 PR 仍从最新的 `upstream/main` 创建分支；只更新数据中的相关 `versions` 和 `# pin:` 行，保持索引顶层字段、插件条目顺序、插件条目的非版本字段和来源 URL 行不变。新增的版本须严格高于该条目里原有的每一个版本；保留旧版本时，原版本记录（尤其提交 SHA）保持不变。可替换唯一的旧版本，但不能只删版本、不添加明确固定的新版本。
+**更新公开插件：** 先确认插件仓库仍有 `agh-plugin` 话题，再按上面的流程发布更高的稳定版，确保新 tag 的提交中有有效的授权文件，并且授权了这次发起市场 PR 的账号。市场 PR 仍从最新的 `upstream/main` 创建分支；只更新数据中的相关 `versions` 和 `# pin:` 行，保持索引顶层字段、插件条目顺序、插件条目的非版本字段和来源 URL 行不变。新增的版本须严格高于该条目里原有的每一个版本；保留旧版本时，原版本记录（尤其提交 SHA）保持不变。可替换唯一的旧版本，但不能只删版本、不添加明确固定的新版本。
 
 每个新增的版本都必须在 `plugins.txt` 中有一行匹配的固定记录。下面的 `1.2.4` 是更新示例；把示例 SHA 换成新 tag 对应的完整小写 SHA，并让 URL、版本和 SHA 与新增的索引版本一致。若从索引中移除了旧版本，也一并移除它的固定记录（如果有）。
 

@@ -41,13 +41,13 @@ jobs:
               -f context='market / validate-index' -f state="$1" -f description="$2" \
               -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
           }
-          report pending 'Validating the proposed market index and README tables'
-          trap 'report failure "Market index or README validation failed; see workflow logs"' EXIT
+          report pending 'Validating the proposed market index, README tables, and plugin Topics'
+          trap 'report failure "Market index, README table, or plugin Topic validation failed; see workflow logs"' EXIT
           git fetch --no-tags --no-recurse-submodules --depth=1 origin "refs/pull/$PR_NUMBER/head"
           if [[ $(git rev-parse FETCH_HEAD) != "$HEAD_SHA" ]]; then
             echo 'The PR head moved; the new revision is checked separately.'
             exit 1
           fi
           node tools/validate-index.mjs "$BASE_SHA" "$HEAD_SHA"
-          report success 'Market index, sources, and README tables are valid'
+          report success 'Market index, sources, README tables, and submission Topics are valid'
           trap - EXIT

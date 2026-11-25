@@ -49,7 +49,8 @@
             "url": "https://github.com/AgnesAI-Labs/agh-app-devboard",
             "commit": "e79a2040ee323070e4b4437295efa1ddc3bc33fa"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["tool","ui","bundle","skills"]
         }
       ]
     },
@@ -89,7 +90,8 @@
             "url": "https://github.com/AgnesAI-Labs/agh-app-pharma-gmp",
             "commit": "e7072a78c4a3369b13d1f0b5859e231b3d069288"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["tool","ui","bundle","skills","service"]
         }
       ]
     },
@@ -169,7 +171,8 @@
           },
           "engines": {
             "agh": ">=0.1.0"
-          }
+          },
+          "provides": ["service"]
         }
       ]
     },
@@ -324,7 +327,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-startup-animation",
             "commit": "86225c212cc4b6000470578e07f88f8e37d61ccc"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },
@@ -415,7 +419,8 @@
             "url": "https://github.com/wblxr408/agh-mountain-gate",
             "commit": "0a8384755006652bc5c027d1cf8b160029ac15bf"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },
@@ -442,7 +447,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-messy-etl",
             "commit": "b86a4c0c4d4ce4c902306c5d962991da38e2082a"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         },
         {
           "version": "1.0.0",

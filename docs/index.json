@@ -458,7 +458,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-messy-etl",
             "commit": "559ea5cafc0994ec033ea329843b6543e512309d"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },
@@ -485,7 +486,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-career-map",
             "commit": "7ab40270d52f29eb72d6813df8ec8932db468d8b"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },
@@ -512,7 +514,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-adrs",
             "commit": "92ef9d1e6b8485ed6625daacc34debebac8b0e4d"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },
@@ -539,7 +542,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-contextrail",
             "commit": "7f0bd83aa18992e5b675e69a72aa6b16b8726ac4"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },
@@ -566,7 +570,8 @@
             "url": "https://github.com/wblxr408/agh-plugin-submitflow",
             "commit": "136db99942fdf85b0a9c503b273a256b444c8c0a"
           },
-          "engines": {}
+          "engines": {},
+          "provides": ["bundle"]
         }
       ]
     },

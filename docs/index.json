@@ -210,7 +210,8 @@
           },
           "engines": {
             "agh": ">=0.1.0"
-          }
+          },
+          "provides": ["service"]
         }
       ]
     },
@@ -251,7 +252,8 @@
           },
           "engines": {
             "agh": ">=0.1.0"
-          }
+          },
+          "provides": ["service"]
         }
       ]
     },

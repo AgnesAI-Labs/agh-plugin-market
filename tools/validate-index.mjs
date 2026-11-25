@@ -196,8 +196,8 @@ function validateNewRelease(name, release) {
   if (!validProvides(release.provides)) fail(`${where}: new releases require provides from the pinned root package.json`)
   if (!validTimestamp(release.publishTimestamp)) fail(`${where}: expected a Git committer time in integer seconds`)
   if (!object(release.engines) || Object.keys(release.engines).some((key) => key !== 'agh') ||
-      (Object.hasOwn(release.engines, 'agh') && !validAghRange(release.engines.agh))) {
-    fail(`${where}: expected engines: {} or a supported engines.agh range of at most 500 UTF-16 code units`)
+      !validAghRange(release.engines.agh)) {
+    fail(`${where}: new releases require index engines with only a supported engines.agh range of at most 500 UTF-16 code units`)
   }
 }
 
@@ -261,7 +261,7 @@ export async function validateCatalog({ base, head, generatedOnly = false } = {}
   for (const [key, { name, releases }] of submissions) {
     await validateTopic(key)
     for (const release of releases) {
-      verifyReleaseMetadata(name, release, await readMetadata(name, release), { checkTime: true })
+      verifyReleaseMetadata(name, release, await readMetadata(name, release), { newRelease: true })
     }
   }
   return current.entries.size

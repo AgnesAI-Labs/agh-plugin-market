@@ -16,8 +16,9 @@ const start = '<!-- market-catalog:start -->'
 const end = '<!-- market-catalog:end -->'
 const template = (heading) => Buffer.from(`${heading}\n\n${start}\n\n${end}\n\nAfter the catalog.\n`)
 const commit = 'a'.repeat(40)
+const aghRange = '>=1.2.0 <2.0.0'
 const release = (version, url) => ({
-  version, publishTimestamp: 1, source: { type: 'git', url, commit }, engines: {}, provides: ['bundle'],
+  version, publishTimestamp: 1, source: { type: 'git', url, commit }, engines: { agh: aghRange }, provides: ['bundle'],
 })
 const listing = (repo, title, version = '1.0.0') => {
   const url = `https://github.com/Example/${repo}`
@@ -51,7 +52,9 @@ function fixture(t) {
     return git('-c', 'user.name=Catalog test', '-c', 'user.email=test@example.com', 'commit-tree', tree,
       ...(parent ? ['-p', parent] : []), '-m', 'Catalog fixture')
   }
-  const catalog = { format: 1, title: 'Market', description: 'Catalog overview', plugins: [listing('existing', 'Existing')] }
+  const existing = listing('existing', 'Existing')
+  existing.versions[0].engines = {}
+  const catalog = { format: 1, title: 'Market', description: 'Catalog overview', plugins: [existing] }
   const setIndex = (index) => put('docs/index.json', JSON.stringify(index))
   const setData = (index) => {
     setIndex(index)
@@ -73,7 +76,7 @@ function fixture(t) {
     setManifest(repo, name, version) {
       const prefix = `https://api.github.com/repos/${repo}/git`
       const tree = 'b'.repeat(40)
-      const bytes = Buffer.from(JSON.stringify({ name, version, agnes: { provides: ['bundle'] } }))
+      const bytes = Buffer.from(JSON.stringify({ name, version, agnes: { provides: ['bundle'] }, engines: { agh: aghRange } }))
       const blob = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')
       const ref = `tags/v${version}`
       objects[`${prefix}/ref/${ref}`] = { ref: `refs/${ref}`, object: { type: 'commit', sha: commit } }

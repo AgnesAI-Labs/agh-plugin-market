@@ -50,7 +50,12 @@
             "commit": "e79a2040ee323070e4b4437295efa1ddc3bc33fa"
           },
           "engines": {},
-          "provides": ["tool","ui","bundle","skills"]
+          "provides": [
+            "tool",
+            "ui",
+            "bundle",
+            "skills"
+          ]
         }
       ]
     },
@@ -91,7 +96,13 @@
             "commit": "e7072a78c4a3369b13d1f0b5859e231b3d069288"
           },
           "engines": {},
-          "provides": ["tool","ui","bundle","skills","service"]
+          "provides": [
+            "tool",
+            "ui",
+            "bundle",
+            "skills",
+            "service"
+          ]
         }
       ]
     },
@@ -172,7 +183,9 @@
           "engines": {
             "agh": ">=0.1.0"
           },
-          "provides": ["service"]
+          "provides": [
+            "service"
+          ]
         }
       ]
     },
@@ -214,7 +227,9 @@
           "engines": {
             "agh": ">=0.1.0"
           },
-          "provides": ["service"]
+          "provides": [
+            "service"
+          ]
         }
       ]
     },
@@ -256,7 +271,9 @@
           "engines": {
             "agh": ">=0.1.0"
           },
-          "provides": ["service"]
+          "provides": [
+            "service"
+          ]
         }
       ]
     },
@@ -276,7 +293,12 @@
         "url": "https://github.com/wblxr408/agh-engineering-memory"
       },
       "metadata": {
-        "keywords": ["agh-plugin", "basic-memory", "engineering-memory", "antigravity"],
+        "keywords": [
+          "agh-plugin",
+          "basic-memory",
+          "engineering-memory",
+          "antigravity"
+        ],
         "labels": [],
         "sortKeys": {}
       },
@@ -328,7 +350,9 @@
             "commit": "86225c212cc4b6000470578e07f88f8e37d61ccc"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -420,7 +444,9 @@
             "commit": "0a8384755006652bc5c027d1cf8b160029ac15bf"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -448,7 +474,9 @@
             "commit": "b86a4c0c4d4ce4c902306c5d962991da38e2082a"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         },
         {
           "version": "1.0.0",
@@ -459,7 +487,9 @@
             "commit": "559ea5cafc0994ec033ea329843b6543e512309d"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -487,7 +517,9 @@
             "commit": "7ab40270d52f29eb72d6813df8ec8932db468d8b"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -515,7 +547,9 @@
             "commit": "92ef9d1e6b8485ed6625daacc34debebac8b0e4d"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -543,7 +577,9 @@
             "commit": "7f0bd83aa18992e5b675e69a72aa6b16b8726ac4"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -571,7 +607,9 @@
             "commit": "136db99942fdf85b0a9c503b273a256b444c8c0a"
           },
           "engines": {},
-          "provides": ["bundle"]
+          "provides": [
+            "bundle"
+          ]
         }
       ]
     },
@@ -795,6 +833,36 @@
         "labels": [],
         "sortKeys": {}
       }
+    },
+    {
+      "name": "@bencibr/bugx",
+      "title": {
+        "en": "BugX Autonomous Code Review",
+        "zh-cn": "BugX 自主代码审查"
+      },
+      "description": {
+        "en": "Autonomous code review and testing agent. Catches hidden deep bugs for developers, automates black-box, functional, and performance testing for QA.",
+        "zh-cn": "BugX 是一个具备自主代码审查与测试能力的智能体，严把代码交付关。"
+      },
+      "author": "Bencibr",
+      "repository": {
+        "url": "https://github.com/Bencibr/agh-plugin-bugx"
+      },
+      "versions": [
+        {
+          "version": "0.1.4",
+          "publishTimestamp": 1795614620,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/Bencibr/agh-plugin-bugx",
+            "commit": "99177c3a12d376933b67fb027a030b94fb0c963d"
+          },
+          "engines": {
+            "agh": ">=1.0.0"
+          },
+          "provides": ["skills","bundle"]
+        }
+      ]
     }
   ]
 }

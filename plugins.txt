@@ -26,3 +26,4 @@ https://github.com/wblxr408/agh-plugin-bughunter-code-review
 https://github.com/wblxr408/agh-plugin-artex-evidence-review
 https://github.com/wblxr408/agh-video-editing-studio
 https://github.com/yuhe520521/agh-plugin-reactive-resume
+https://github.com/Bencibr/agh-plugin-bugx

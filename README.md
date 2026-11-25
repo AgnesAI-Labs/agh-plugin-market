@@ -116,5 +116,6 @@ Do not add or change `engines.agh` in a type-maintenance PR. Missing or invalid 
 | [ARTEX Audit Evidence Review](https://github.com/wblxr408/agh-plugin-artex-evidence-review) | `@wblxr408/artex-evidence-review` | `1.0.0` |
 | [Video Editing Studio](https://github.com/wblxr408/agh-video-editing-studio) | `@wblxr408/video-editing-studio` | `2.0.0` |
 | [Reactive Resume](https://github.com/yuhe520521/agh-plugin-reactive-resume) | `@yuhe520521/reactive-resume` | `0.2.0` |
+| [BugX Autonomous Code Review](https://github.com/Bencibr/agh-plugin-bugx) | `@bencibr/bugx` | `0.1.4` |
 
 <!-- market-catalog:end -->

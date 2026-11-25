@@ -181,20 +181,27 @@ export function readReleaseMetadata({ historical = false } = {}) {
       await verifyRepositoryPin(repo, version, sha, historical, signal)
       if (!manifests.has(key)) manifests.set(key, pinnedManifest(repo, sha, signal))
       const { pkg, publishTimestamp } = await manifests.get(key)
-      return { provides: manifestProvides(pkg, { name, version }), publishTimestamp }
+      return { provides: manifestProvides(pkg, { name, version }), publishTimestamp, aghRange: pkg.engines?.agh }
     } catch (error) {
       throw new Error(`${name}@${version} (${key}): ${error.message}`)
     }
   }
 }
 
-export function verifyReleaseMetadata(name, release, facts, { checkTime = false } = {}) {
+export function verifyReleaseMetadata(name, release, facts, { newRelease = false } = {}) {
   const where = `${name}@${release.version}`
   if (facts.provides === undefined) throw new Error(`${where}: pinned root package.json has no agnes.provides`)
   if (!isDeepStrictEqual(release.provides, facts.provides)) {
     throw new Error(`${where}: indexed provides must match the pinned package.json agnes.provides exactly`)
   }
-  if (checkTime && (!validTimestamp(release.publishTimestamp) || release.publishTimestamp !== facts.publishTimestamp)) {
+  if (!newRelease) return
+  if (!validTimestamp(release.publishTimestamp) || release.publishTimestamp !== facts.publishTimestamp) {
     throw new Error(`${where}: publishTimestamp must equal the pinned Git commit's committer time (%ct) in seconds`)
+  }
+  if (!validAghRange(facts.aghRange)) {
+    throw new Error(`${where}: pinned root package.json must declare a supported engines.agh range of at most 500 UTF-16 code units`)
+  }
+  if (release.engines.agh !== facts.aghRange) {
+    throw new Error(`${where}: indexed engines.agh must match the pinned root package.json engines.agh exactly`)
   }
 }

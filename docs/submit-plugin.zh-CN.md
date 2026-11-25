@@ -12,6 +12,8 @@
 
 **首次上架或提交新版之前，插件仓库必须已设置 GitHub 话题（Topic）`agh-plugin`。** 打开插件仓库首页，点击 **About** 旁的齿轮，在 **Topics** 中添加 `agh-plugin` 并保存。如果你不能编辑仓库设置，请让仓库管理员添加，等到 **About** 中能看到该话题再开市场 PR。这是插件仓库的 Topic，不是 PR 标签，也不是 Git 发版 tag。它让别人能从 [GitHub 话题页](https://github.com/topics/agh-plugin)找到该仓库，但不等于上架。
 
+每次投稿新版本，都要在打 tag 前将实际支持的 AGH 版本范围写入根 `package.json` 的 `engines.agh`。范围不能为空或只有空白，最多 500 个 UTF-16 代码单元，须用 AGH 支持的语法，例如 `">=1.2.0 <2.0.0"`。不要用 `||` 或连字符范围。
+
 `package.json` 的 `name` 和 `version` 必须与市场条目一致。`agnes.provides` 至少填写一种插件类型，各值不得重复，可选 `tool`、`loop`、`model-adapter`、`mcp`、`skills`、`ui`、`bundle`、`service`。这些标签只描述包里有什么，不授予权限。不要使用 `agnes.extensions` 或根目录下的 `agnes.extension.json`。如果已有插件，请保留实际的声明；下面是一份无需编写入口代码的只读 Bundle 示例：
 
 ```json
@@ -19,6 +21,7 @@
   "name": "@octo-cat/example",
   "version": "1.2.3",
   "license": "MIT",
+  "engines": { "agh": ">=1.2.0 <2.0.0" },
   "agnes": {
     "provides": ["bundle"],
     "bundles": {
@@ -134,7 +137,7 @@ git switch -c add-octo-cat-example upstream/main
         "url": "https://github.com/Octo-Cat/agh-example",
         "commit": "0123456789abcdef0123456789abcdef01234567"
       },
-      "engines": {}
+      "engines": { "agh": ">=1.2.0 <2.0.0" }
     }
   ]
 }
@@ -142,7 +145,7 @@ git switch -c add-octo-cat-example upstream/main
 
 把示例中的 `commit` 和 `publishTimestamp` 换成上一步查到的值。时间戳是 Git 提交者时间，单位为秒，取 `1` 到 `253402300799` 的整数，不加引号。`version` 不加 `v`。`repository` 只含 `url`，`source` 只含 `type`、`url` 和 `commit`。三处仓库 URL 的拼写要完全一致；包名和仓库都不能重复。
 
-没有兼容性声明时写 `engines: {}`。有声明时，复制真实的 `engines.agh` 范围，例如 `">=1.2.0 <2.0.0"`。范围最多 500 个 UTF-16 代码单元，须用 AGH 支持的语法，不能用 `||` 或连字符范围。第 5 步的命令会从固定提交的根清单生成 `provides`。
+将固定提交的根 `package.json` 中的 `engines.agh` 原样复制到索引，保留范围字符串中的空格。清单可以声明其他引擎，但索引中的 `engines` 只接受 `agh`。第 5 步的投影命令只生成 `provides`。
 
 不写展示字段也能投稿。如果要加，只使用以下可选字段，不要在索引条目中放插件清单或自定义字段：
 
@@ -166,9 +169,9 @@ git diff --stat upstream/main
 git diff upstream/main
 ```
 
-投影命令和必过检查都会验证所列仓库的 `refs/tags/vX.Y.Z` 是否指向固定提交。必过检查还会核对 `agh-plugin` 话题、`provides` 是否与固定提交的根清单一致，以及 `publishTimestamp` 是否与该提交的 Git 提交者时间一致。
+投影命令和必过检查都会验证所列仓库的 `refs/tags/vX.Y.Z` 是否指向固定提交。必过检查还会核对 `agh-plugin` 话题，确认 `provides` 和 `engines.agh` 与固定提交的根清单一致，以及 `publishTimestamp` 与该提交的 Git 提交者时间一致。
 
-缺少声明、值不匹配或无法取证都会阻止投稿。固定提交缺少有效声明时，请发布更高版本，不要猜测类型或移动旧 tag。读取 tag 和 Git 对象不使用凭据。GitHub 限流或无法访问时，等公开读取恢复后重试。
+缺少声明、值不匹配或无法取证都会阻止投稿。如果只是索引填错，从固定提交的根 `package.json` 复制正确值；如果根清单缺少有效声明，发布包含该声明的新版本，不要移动旧 tag。读取 tag 和 Git 对象不使用凭据。GitHub 限流或无法访问时，等公开读取恢复后重试。
 
 本地校验不审核发版内容或验证账号授权。四个文件都应为不可执行的普通文件，不能是软链接；AGH 下载索引的上限是 2 MiB（2,097,152 字节）。
 
@@ -238,6 +241,8 @@ PR 合入上游 `main` 后，[中文](../README.zh-CN.md#已收录)和[英文](.
 ## 已上架后：发新版或下架
 
 **更新公开插件：** 先确认插件仓库仍有 `agh-plugin` 话题，再按上面的流程发布更高的稳定版，确保新 tag 的提交中有有效的授权文件，并且授权了这次发起市场 PR 的账号。市场 PR 仍从最新的 `upstream/main` 创建分支；只更新数据中的相关 `versions` 和 `# pin:` 行，保持索引顶层字段、插件条目顺序、插件条目的非版本字段和来源 URL 行不变。新增的版本须严格高于该条目里原有的每一个版本；保留旧版本时，原版本记录（尤其提交 SHA）保持不变。可替换唯一的旧版本，但不能只删版本、不添加明确固定的新版本。
+
+按第 4 步从新版本固定提交的根 `package.json` 复制 `engines.agh`。保留的旧版本即使没有 `engines.agh`，也不要补写或修改。
 
 每个新增的版本都必须在 `plugins.txt` 中有一行匹配的固定记录。下面的 `1.2.4` 是更新示例；把示例 SHA 换成新 tag 对应的完整小写 SHA，并让 URL、版本和 SHA 与新增的索引版本一致。若从索引中移除了旧版本，也一并移除它的固定记录（如果有）。
 

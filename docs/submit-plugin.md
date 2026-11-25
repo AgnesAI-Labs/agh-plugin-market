@@ -16,6 +16,8 @@ Create or use your own **public** GitHub repository. Use its canonical URL, `htt
 
 Place `package.json` in the repository root. Name the package `@<lowercase-github-owner>/<name>`: for `https://github.com/Octo-Cat/agh-example`, use `@octo-cat/example`. The name after the slash starts with a lowercase letter or digit and can also contain `.`, `_`, and `-` after its first character. Keep the full package name at most 214 characters. The scopes `agnes`, `agnesai`, `agnes-ai`, `agnesai-labs`, `agnes-harness`, and `agnes-showcase` are reserved, regardless of case. The package version must be a stable `X.Y.Z` with no `v` prefix in the manifest, no prerelease or build suffix, and no leading zeroes in the components.
 
+Set `engines.agh` in the root `package.json` before tagging every new version you submit. Declare the AGH versions your plugin supports. Use a nonblank range of at most 500 UTF-16 code units with AGH-supported syntax, such as `">=1.2.0 <2.0.0"`. Do not use `||` or hyphen ranges.
+
 If you are starting from scratch, this is a minimal read-only [Bundle](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/bundles-and-profiles.md). It publishes a profile that requests a read-only tool policy, without an executable plugin entry:
 
 ```json
@@ -23,6 +25,7 @@ If you are starting from scratch, this is a minimal read-only [Bundle](https://g
   "name": "@octo-cat/example",
   "version": "1.2.3",
   "license": "MIT",
+  "engines": { "agh": ">=1.2.0 <2.0.0" },
   "agnes": {
     "provides": ["bundle"],
     "bundles": {
@@ -135,7 +138,7 @@ Make the data changes in these two files:
         "url": "https://github.com/Octo-Cat/agh-example",
         "commit": "0123456789abcdef0123456789abcdef01234567"
       },
-      "engines": {}
+      "engines": { "agh": ">=1.2.0 <2.0.0" }
     }
   ]
 }
@@ -143,7 +146,7 @@ Make the data changes in these two files:
 
 Replace the sample name, both URLs, version, timestamp, and commit. Use a stable version without `v` and with at most 128 characters. Set `publishTimestamp` to the Git committer time from step 3, as an integer from `1` to `253402300799` in seconds. Use the full commit SHA. Use the same URL spelling in both fields and in `plugins.txt`. `repository` has only `url`. `source` has only `type`, `url`, and `commit`. Each package name and repository must be unique.
 
-Use `engines: {}` if no AGH compatibility is declared. Otherwise, copy the actual `engines.agh` requirement, such as `">=1.2.0 <2.0.0"`. The range must be at most 500 UTF-16 code units and use syntax supported by AGH. Do not use `||` or hyphen ranges. The projection command in step 5 fills in `provides` from the pinned manifest.
+Copy `engines.agh` exactly as written in the pinned root `package.json`, including any spaces in the string. The index's `engines` object accepts only `agh`, even if your manifest declares other engines. The projection command in step 5 fills in only `provides`.
 
 The sample omits optional display fields. If you add them to the new row:
 
@@ -170,9 +173,9 @@ git diff --stat upstream/main
 git diff upstream/main
 ```
 
-The projection command and the required check both verify that `refs/tags/vX.Y.Z` in the listed repository resolves to the pinned commit. The required check also verifies the `agh-plugin` Topic, compares `provides` with the pinned root manifest, and compares `publishTimestamp` with that commit's Git committer time.
+The projection command and the required check both verify that `refs/tags/vX.Y.Z` in the listed repository resolves to the pinned commit. The required check verifies the `agh-plugin` Topic and checks that `provides` and `engines.agh` match the pinned root manifest. It also compares `publishTimestamp` with that commit's Git committer time.
 
-A missing declaration, mismatched value, or unavailable evidence blocks the submission. If the pinned manifest lacks a valid declaration, publish a new version with one. Do not guess a value or move an existing tag. Tag and Git object requests do not use credentials. If GitHub rate limits public requests or is unavailable, retry when access returns.
+A missing declaration, mismatched value, or unavailable evidence blocks the submission. If only the index is wrong, copy the value from the pinned root `package.json`. If the pinned manifest lacks a valid declaration, publish a new version with one. Do not move an existing tag. Tag and Git object requests do not use credentials. If GitHub rate limits public requests or is unavailable, retry when access returns.
 
 The validator does not review release contents or verify account authorization. The diff for a first listing should contain only your new URL, your new index row (plus the JSON separator), and its generated row in each README. Do not hand-edit either table or change surrounding README text. Then commit and push the branch to your fork:
 
@@ -235,6 +238,6 @@ For an update, confirm the plugin repository still has the `agh-plugin` Topic, t
 # pin: https://github.com/Octo-Cat/agh-example 1.2.4 FULL_COMMIT_SHA
 ```
 
-If you replace an older entry, remove its old pin if present. If you keep an entry, preserve the entire record unchanged. Run step 5 for the new package version after you set its pin, then include the generated data and both README tables in the PR. Display-only edits to a plugin row do not qualify as automatic version updates.
+Copy the new version's `engines.agh` from its pinned root `package.json` as in step 4. If you replace an older entry, remove its old pin if present. If you keep an entry, preserve it unchanged even if it lacks `engines.agh`. Run step 5 for the new package version after you set its pin, then include the generated data and both README tables in the PR. Display-only edits to a plugin row do not qualify as automatic version updates.
 
 To remove a listing, open a PR that removes its source URL, all its pins, and its index entry together. Follow step 5 to regenerate, validate, and include the README tables so the same PR removes both display rows. Explain the reason in the PR; removals require manual review and merge.

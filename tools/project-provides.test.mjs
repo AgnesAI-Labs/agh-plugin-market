@@ -13,6 +13,7 @@ const exec = promisify(execFile)
 const tool = (name) => fileURLToPath(new URL(name, import.meta.url))
 const publisher = new URL('./publish-release.mjs', import.meta.url).href
 const epoch = 1795086102
+const aghRange = '>=1.2.0 <2.0.0'
 const env = {
   ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_AUTHOR_NAME: 'Fixture', GIT_COMMITTER_NAME: 'Fixture',
@@ -85,7 +86,10 @@ async function fixture(t) {
   function release(repo, name, version, { provides = ['skills', 'tool'], mode = '100644', alterPkg, absent = false, raw, files = {}, parent } = {}) {
     const prefix = `/repos/${repo}/git`
     const url = `https://github.com/${repo}`
-    const pkg = { name, version, agnes: { provides }, scripts: { postinstall: `touch '${sentinel}'` }, ...alterPkg }
+    const pkg = {
+      name, version, agnes: { provides }, engines: { agh: aghRange },
+      scripts: { postinstall: `touch '${sentinel}'` }, ...alterPkg,
+    }
     const bytes = raw ?? JSON.stringify(pkg)
     const size = Buffer.byteLength(bytes)
     const blob = git(upstream, ['hash-object', '-w', '--stdin'], bytes)
@@ -108,7 +112,7 @@ async function fixture(t) {
     routes.set(`/repos/${repo}/topics`, { names: ['agh-plugin'] })
     return {
       source: { type: 'git', commit, url }, version, publishTimestamp: Number(time('%ct')),
-      engines: { agh: '>=1.2.0 <2.0.0' }, provides, paths,
+      engines: { agh: aghRange }, provides, paths,
     }
   }
   function stage(index, pins = [], { text = json(index), extra } = {}) {
@@ -230,6 +234,45 @@ test('new submissions require the named repository tag and read committer second
   assert.equal(existsSync(f.sentinel), false)
 })
 
+test('first listings and pinned updates require an exact AGH range from the root manifest', async (t) => {
+  const f = await fixture(t)
+  const name = '@example/compatibility'
+  const repo = 'example/compatibility'
+  const existingName = '@example/existing'
+  const existing = listing(existingName, without(f.info('example/existing', existingName, '1.0.0').entry))
+  const { engines: _, ...legacy } = f.info(repo, name, '1.0.0', { alterPkg: { engines: undefined } }).entry
+  for (const [kind, retained] of [['new-listing', []], ['release-update', [legacy]]]) {
+    await t.test(kind, async () => {
+      const update = retained.length > 0
+      f.stage(update ? catalog(existing, listing(name, ...retained)) : catalog(existing))
+      const base = f.snapshot()
+      const version = update ? '2.0.0' : '1.0.0'
+      const range = ` ${aghRange} `
+      const { entry } = f.info(repo, name, version, { alterPkg: { engines: { agh: range, node: '>=24' } } })
+      const matching = { ...entry, engines: { agh: range } }
+      function proposal(release) {
+        f.stage(catalog(existing, listing(name, release, ...retained)), update ? [pin(release)] : [])
+        return f.snapshot(base)
+      }
+
+      const accepted = proposal(matching)
+      ok(await f.validate(base, accepted))
+      assert.deepEqual(await f.publication(base, accepted), { kind })
+      for (const engines of [undefined, {}, { agh: '' }, { agh: ' \t ' }, { agh: 'latest' }, { agh: range, node: '>=24' }]) {
+        rejects(await f.validate(base, proposal({ ...entry, engines })), /index engines.*supported engines\.agh/)
+      }
+
+      const mismatch = proposal(entry)
+      rejects(await f.validate(base, mismatch), /indexed engines\.agh must match the pinned root package\.json/)
+      assert.match((await f.publication(base, mismatch)).reason, /pinned release metadata.*did not pass/)
+      for (const engines of [undefined, { node: '>=24' }, { agh: '' }, { agh: ' \t ' }, { agh: 'latest' }, { agh: 24 }]) {
+        const { entry } = f.info(repo, name, version, { alterPkg: { engines } })
+        rejects(await f.validate(base, proposal(entry)), /pinned root package\.json must declare.*engines\.agh/)
+      }
+    })
+  }
+})
+
 test('projection preserves untouched bytes, reuses a pin and never writes a partially verified batch', async (t) => {
   const f = await fixture(t)
   const name = '@example/toolkit'
@@ -278,14 +321,14 @@ test('only historical enrichment accepts an exact default tip or a proven ancest
   const f = await fixture(t)
   const repo = 'example/history'
   const name = '@example/history'
-  const { entry, paths } = f.info(repo, name, '1.0.0')
+  const { entry, paths } = f.info(repo, name, '1.0.0', { alterPkg: { engines: undefined } })
   const { commit } = entry.source
   const tip = f.info(repo, name, '2.0.0', { parent: commit, provides: ['service'] }).entry.source.commit
   const tag = tagPath(repo, entry.version)
   const head = headPath(repo)
   const compare = comparePath(repo, commit, tip)
   const target = `${name}@${entry.version}`
-  f.stage(catalog(listing(name, without(entry))))
+  f.stage(catalog(listing(name, { ...without(entry), engines: {} })))
   const original = f.read()
   const base = f.snapshot()
   f.routes.set(tag, tagRef(entry.version, tip))
@@ -372,7 +415,10 @@ test('enrichment and correction are isolated, and correction proves its origin o
   const f = await fixture(t)
   const a = '@example/a'
   const b = '@example/b'
-  const first = f.info('example/a', a, '1.0.0').entry
+  const first = {
+    ...f.info('example/a', a, '1.0.0', { alterPkg: { engines: { agh: {} } } }).entry,
+    engines: { agh: 'invalid historical range' },
+  }
   const second = f.info('example/b', b, '1.0.0').entry
   const newer = f.info('example/a', a, '2.0.0', { provides: ['service'] }).entry
   const legacy = (...rows) => catalog(listing(a, without(first)), listing(b, without(second)), ...rows)

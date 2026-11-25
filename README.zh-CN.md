@@ -16,9 +16,9 @@
 - Git 版本 `{ "type": "git", "url": U, "commit": C }` 用 `agh plugins add git:U#C` 安装；
 - 语言键用小写（`zh-cn`），这是 format 1 的要求；AGH 读取时再对应到自己的语言标识。
 
-新收录的插件和新增版本必须从固定提交的根 `package.json` 复制 `agnes.provides` 到索引的 `provides`。没有记录类型的历史版本保持未分类。`publishTimestamp` 记录 Git 提交者时间（`%ct`），单位为秒，不是发版或上架时间。
+新收录的插件和新增版本必须从固定提交的根 `package.json` 复制 `agnes.provides` 到索引的 `provides`，并原样复制 `engines.agh`。保留的旧版本即使没有 `engines.agh`，也保持不变。没有 `provides` 的历史版本保持未分类。`publishTimestamp` 记录 Git 提交者时间（`%ct`），单位为秒，不是发版或上架时间。
 
-投稿时运行 `node tools/project-provides.mjs --write PACKAGE@VERSION` 生成 `provides`。`node tools/build-index.mjs <放各仓库克隆的目录>` 仍可从本地克隆重建索引，每个仓库取一个发版 tag。不要用重建命令投稿或补录历史类型。
+投稿时运行 `node tools/project-provides.mjs --write PACKAGE@VERSION`，该命令只生成 `provides`。`node tools/build-index.mjs <放各仓库克隆的目录>` 仍可从本地克隆重建索引，每个仓库取一个发版 tag。不要用重建命令投稿或补录历史类型。
 
 ## 上架你的插件
 
@@ -26,7 +26,7 @@
 
 请阅读[公开插件上架教程](docs/submit-plugin.zh-CN.md)，按步骤准备插件和发版授权、提交并检查市场 PR，以及确认上架、更新版本或下架。
 
-首次上架或提交新版前，必须在插件仓库设置 `agh-plugin` 话题。`market / validate-index` 必过检查会核验话题，并用公开仓库中的确切固定提交复核 `provides` 和 Git 提交者时间。没有改动的旧版本不会回源核验。
+首次上架或提交新版前，必须在插件仓库设置 `agh-plugin` 话题。`market / validate-index` 必过检查会核验话题，并用公开仓库中的确切固定提交复核 `provides`、`engines.agh` 和 Git 提交者时间。范围是作者的兼容性声明，不是安装或兼容性测试结果。没有改动的旧版本不会回源核验。
 
 ### 发版审核（仅报告）
 
@@ -81,6 +81,8 @@
 可追加一个或多个 `PACKAGE@VERSION` 参数分批操作。GitHub 对同一 IP 的匿名 REST 请求总计每小时最多允许 60 次。有待补录的字段时，检查命令会以非零状态退出。任何选中版本无法核验时，工具会报告原因且不写入结果。可重试或选择能核验的批次。缺少证据或声明的版本不补录。
 
 补录 PR 只改索引。纠正时另开只改索引的 PR，只删除误加的 `provides`。必过检查会从可信 `main` 历史追溯每个字段的补录提交，维护者核对证据后再合并。两类 PR 均不能自动发布，也不需复查旧仓库的话题。
+
+维护历史版本类型时，不添加或修改 `engines.agh`。缺少范围或范围无效，不影响维护历史类型或下架插件。
 
 ## 已收录
 

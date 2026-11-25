@@ -79,7 +79,7 @@ function validRelease(release, url) {
     && release.source.url === url && sha.test(release.source.commit)
     && validTimestamp(release.publishTimestamp) && validProvides(release.provides)
     && keysWithin(release.engines, ['agh'])
-    && (!Object.hasOwn(release.engines, 'agh') || validAghRange(release.engines.agh))
+    && validAghRange(release.engines.agh)
 }
 
 function isNewListing(row) {

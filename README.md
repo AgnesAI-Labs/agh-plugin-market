@@ -16,9 +16,9 @@ The official plugin market index of [Agnes Harness](https://github.com/AgnesAI-L
 - a Git version `{ "type": "git", "url": U, "commit": C }` installs as `agh plugins add git:U#C`;
 - locale keys are lowercase (`zh-cn`), as format 1 requires; AGH maps them to its own locale ids.
 
-New entries and versions must have `provides` copied from `agnes.provides` in the root `package.json` at the pin. Older versions without a recorded declaration stay unclassified. `publishTimestamp` records Git committer time in seconds (`%ct`), not publication time.
+For new entries and versions, copy `agnes.provides` to the index's `provides` and copy `engines.agh` exactly from the pinned root `package.json`. Keep retained versions unchanged even if they lack `engines.agh`. Older versions without `provides` stay unclassified. `publishTimestamp` records Git committer time in seconds (`%ct`), not publication time.
 
-Use `node tools/project-provides.mjs --write PACKAGE@VERSION` to fill in `provides` for a submission. `node tools/build-index.mjs <dir-with-clones>` still rebuilds the index from local clones using one release tag per repository. Do not use the rebuild command for a submission or an existing version's metadata.
+Use `node tools/project-provides.mjs --write PACKAGE@VERSION` to fill in only `provides` for a submission. `node tools/build-index.mjs <dir-with-clones>` still rebuilds the index from local clones using one release tag per repository. Do not use the rebuild command for a submission or an existing version's metadata.
 
 ## List your plugin
 
@@ -26,7 +26,7 @@ Use `node tools/project-provides.mjs --write PACKAGE@VERSION` to fill in `provid
 
 Follow the [public plugin submission guide](docs/submit-plugin.md) to prepare a release, open a market PR, and confirm publication. It also covers updates and removals.
 
-Before opening a market PR for a new listing or version, add the `agh-plugin` Topic to the plugin repository. The required `market / validate-index` check verifies the Topic, `provides`, and Git commit time against the exact public pin. Unchanged versions are not fetched.
+Before opening a market PR for a new listing or version, add the `agh-plugin` Topic to the plugin repository. The required `market / validate-index` check verifies the Topic, then checks `provides`, `engines.agh`, and Git committer time against the exact public pin. The range records the author's compatibility declaration, not an installation or compatibility test. Unchanged versions are not fetched.
 
 ### Release review (report only)
 
@@ -81,6 +81,8 @@ Start from current `main`. Run `node tools/project-provides.mjs --check --histor
 Pass one or more `PACKAGE@VERSION` arguments to process a smaller batch. GitHub allows 60 unauthenticated REST requests per hour per IP, shared with other requests. A check exits unsuccessfully when it reports pending writes. If a selected version cannot be verified, the tool reports why and writes nothing. Retry or select a verifiable batch. Leave fields missing when there is no proof or no declaration.
 
 Open an index-only PR for enrichment. Open a separate index-only PR to remove any mistakenly added `provides` fields. The required check traces each removal to an index-only enrichment on trusted `main` history. A maintainer must verify that evidence before merging. Neither type of PR qualifies for unattended publication or needs a Topic check.
+
+Do not add or change `engines.agh` in a type-maintenance PR. Missing or invalid ranges do not block historical type maintenance or removal of a listing.
 
 ## Listed plugins
 

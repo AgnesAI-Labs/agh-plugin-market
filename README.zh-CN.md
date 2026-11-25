@@ -16,7 +16,9 @@
 - Git 版本 `{ "type": "git", "url": U, "commit": C }` 用 `agh plugins add git:U#C` 安装；
 - 语言键用小写（`zh-cn`），这是 format 1 的要求；AGH 读取时再对应到自己的语言标识。
 
-每个版本都固定到对应发版 tag 的提交。完整的生成工具做好之前，用 `node tools/build-index.mjs <放各仓库克隆的目录>` 从本地克隆重建索引（每个仓库取最新的发版 tag）。产出的索引能通过 DSH format 1 的校验。
+新收录的插件和新增版本必须从固定提交的根 `package.json` 复制 `agnes.provides` 到索引的 `provides`。没有记录类型的历史版本保持未分类。`publishTimestamp` 记录 Git 提交者时间（`%ct`），单位为秒，不是发版或上架时间。
+
+投稿时运行 `node tools/project-provides.mjs --write PACKAGE@VERSION` 生成 `provides`。`node tools/build-index.mjs <放各仓库克隆的目录>` 仍可从本地克隆重建索引，每个仓库取一个发版 tag。不要用重建命令投稿或补录历史类型。
 
 ## 上架你的插件
 
@@ -24,7 +26,7 @@
 
 请阅读[公开插件上架教程](docs/submit-plugin.zh-CN.md)，按步骤准备插件和发版授权、提交并检查市场 PR，以及确认上架、更新版本或下架。
 
-首次上架或提交新版前，必须在插件仓库设置 `agh-plugin` 话题。如果缺少话题或无法验证，`market / validate-index` 必过检查会阻止合并。已上架条目和下架 PR 不受影响。
+首次上架或提交新版前，必须在插件仓库设置 `agh-plugin` 话题。`market / validate-index` 必过检查会核验话题，并用公开仓库中的确切固定提交复核 `provides` 和 Git 提交者时间。没有改动的旧版本不会回源核验。
 
 ### 发版审核（仅报告）
 
@@ -55,7 +57,7 @@
 - 更新使用仓库所有者作用域的已收录公开插件版本，且符合上述固定提交和发版授权规则；或更新已收录且在 [`tools/publish-release.mjs`](tools/publish-release.mjs) 原有白名单中的仓库版本。原有名单包括 `AgnesAI-Labs/agh-app-devboard`、`AgnesAI-Labs/agh-app-pharma-gmp` 和 `AgnesAI-Labs/agh-app-aerospace-quality`。
 - 仅修改市场展示文案，且 PR 的源分支必须在本仓库中（不能来自 fork）。只能修改索引顶层的 `title` 或 `description`，不得修改插件条目或 `plugins.txt`。
 
-超出上述类别的变更，以及仓库维护或工具变更（包括原有白名单的变更），都须人工审核并合并。只读审核作业使用可信的 `main` 代码，不检出或执行投稿者的代码，并针对 PR 当前提交重新验证索引及仓库话题、审核发版。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
+超出上述类别的变更（包括历史类型维护）须人工审核并合并。只读审核作业使用可信的 `main` 代码，针对 PR 当前提交重新验证索引及发版证明，不检出或执行投稿者的代码。只有 `passed` 可以自动合并，`needs-review`、`failed` 和 `incomplete` 均不行。
 
 独立的合并作业使用仓库内置的短期 `GITHUB_TOKEN`，仅请求合并已经审核的提交。它不会提交批准，也不会绕过规则：GitHub 仍要求通过 PR 合并，并通过严格的 `market / validate-index` 检查（PR 必须跟上 `main`）。无需 GitHub App、PAT、组织管理员或具有绕过权限的账号。
 
@@ -71,6 +73,14 @@
 4. 如需回退部署配置，先停用自动发布，再将 Pages 来源切回 **Deploy from a branch → `main` → `/docs`**，然后确认原线上索引地址可正常访问。分支发布仍提供索引，但不会生成 HTML 目录页或旧版 SVG 目录文件。如需撤销已发布的索引变更，请提交回退 PR，按正常流程通过检查后合并，再验证部署结果。
 
 **维护投稿流程。** 只要 PR 改变投稿者使用的格式、步骤、自动合并条件、检查项或 README 同步方式，就必须在同一个 PR 中更新[中文](docs/submit-plugin.zh-CN.md)和[英文](docs/submit-plugin.md)教程。CI 检查两份教程是否一起修改；审核时还要核对两份教程是否准确反映新流程。仅修改目录数据或不影响投稿流程的维护 PR 不必改教程。
+
+### 维护历史版本类型
+
+从最新的 `main` 开始。运行 `node tools/project-provides.mjs --check --historical` 查看缺失项，或运行 `node tools/project-provides.mjs --write --historical` 从固定 Git 对象补录。只对已上架版本使用 `--historical`。如果对应的发版 tag 缺失或指向其他提交，固定提交必须是所列仓库默认分支的当前提交，或是该提交的祖先。
+
+可追加一个或多个 `PACKAGE@VERSION` 参数分批操作。GitHub 对同一 IP 的匿名 REST 请求总计每小时最多允许 60 次。有待补录的字段时，检查命令会以非零状态退出。任何选中版本无法核验时，工具会报告原因且不写入结果。可重试或选择能核验的批次。缺少证据或声明的版本不补录。
+
+补录 PR 只改索引。纠正时另开只改索引的 PR，只删除误加的 `provides`。必过检查会从可信 `main` 历史追溯每个字段的补录提交，维护者核对证据后再合并。两类 PR 均不能自动发布，也不需复查旧仓库的话题。
 
 ## 已收录
 

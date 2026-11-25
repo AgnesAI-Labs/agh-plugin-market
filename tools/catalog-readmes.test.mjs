@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,7 +17,7 @@ const end = '<!-- market-catalog:end -->'
 const template = (heading) => Buffer.from(`${heading}\n\n${start}\n\n${end}\n\nAfter the catalog.\n`)
 const commit = 'a'.repeat(40)
 const release = (version, url) => ({
-  version, publishTimestamp: 1, source: { type: 'git', url, commit }, engines: {},
+  version, publishTimestamp: 1, source: { type: 'git', url, commit }, engines: {}, provides: ['bundle'],
 })
 const listing = (repo, title, version = '1.0.0') => {
   const url = `https://github.com/Example/${repo}`
@@ -31,9 +32,12 @@ function fixture(t) {
   const git = (...args) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd, encoding: 'utf8' }).trim()
   const node = (...args) => spawnSync(process.execPath, args, { cwd, encoding: 'utf8' })
   const topics = {}
+  const objects = {}
   const withTopics = (...args) => node('--import', `data:text/javascript,${encodeURIComponent(`
     const topics = ${JSON.stringify(topics)}
+    const objects = ${JSON.stringify(objects)}
     globalThis.fetch = async (url) => {
+      if (Object.hasOwn(objects, url)) return Response.json(objects[url])
       const names = topics[url]
       return names === undefined ? new Response(null, { status: 503 }) : Response.json({ names })
     }
@@ -66,6 +70,17 @@ function fixture(t) {
     snapshot: () => snapshot(base),
     sync: () => success(node(sync)),
     setTopics: (repo, names) => { topics[`https://api.github.com/repos/${repo}/topics`] = names },
+    setManifest(repo, name, version) {
+      const prefix = `https://api.github.com/repos/${repo}/git`
+      const tree = 'b'.repeat(40)
+      const bytes = Buffer.from(JSON.stringify({ name, version, agnes: { provides: ['bundle'] } }))
+      const blob = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex')
+      const ref = `tags/v${version}`
+      objects[`${prefix}/ref/${ref}`] = { ref: `refs/${ref}`, object: { type: 'commit', sha: commit } }
+      objects[`${prefix}/commits/${commit}`] = { sha: commit, tree: { sha: tree }, committer: { date: '1970-01-01T00:00:01Z' } }
+      objects[`${prefix}/trees/${tree}`] = { sha: tree, truncated: false, tree: [{ path: 'package.json', sha: blob, mode: '100644', type: 'blob', size: bytes.length }] }
+      objects[`${prefix}/blobs/${blob}`] = { sha: blob, encoding: 'base64', size: bytes.length, content: bytes.toString('base64') }
+    },
     validate: (head) => withTopics(validate, base, head),
     candidate(head, sameRepository = false) {
       const result = withTopics('--input-type=module', '--eval',
@@ -127,7 +142,9 @@ test('trusted validation and publisher accept pinned fork blobs only with canoni
   expectFailure(repo.validate(added), /example\/welcome: missing required GitHub Topic agh-plugin/)
   assert.match(repo.candidate(added).reason, /submission Topic/)
   repo.setTopics('example/welcome', ['unrelated', 'agh-plugin'])
-  assert.equal(repo.validate(added).status, 0)
+  repo.setManifest('example/welcome', appended.name, '1.0.0')
+  const valid = repo.validate(added)
+  assert.equal(valid.status, 0, valid.stderr)
   assert.deepEqual(repo.candidate(added), { kind: 'new-listing' })
   repo.put(paths[0], english)
   repo.put(paths[1], chinese.toString().replace('欢迎', 'Hand-edit'))
@@ -166,6 +183,7 @@ test('the same gate permits generated update rows, unchanged tables, and reviewe
   expectFailure(repo.validate(repo.snapshot()), /example\/existing: missing required GitHub Topic agh-plugin/)
   assert.match(repo.candidate(repo.snapshot()).reason, /submission Topic/)
   repo.setTopics('example/existing', ['agh-plugin'])
+  repo.setManifest('example/existing', existing.name, '2.0.0')
   assert.deepEqual(repo.candidate(repo.snapshot()), { kind: 'release-update' })
   const generated = repo.read(paths[0])
   repo.put(paths[0], repo.read(paths[0]).toString().replace('After the catalog.', 'Reviewed maintenance copy.'))

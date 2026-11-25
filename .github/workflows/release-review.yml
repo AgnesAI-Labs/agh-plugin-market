@@ -12,6 +12,7 @@ on:
       - '.github/actions/install-gitleaks/action.yml'
       - 'tools/review-release.mjs'
       - 'tools/public-submission.mjs'
+      - 'tools/release-metadata.mjs'
       - 'tools/review-gitleaks.toml'
 
 permissions:

@@ -140,7 +140,9 @@ git switch -c add-octo-cat-example upstream/main
 }
 ```
 
-把示例中的 `commit` 和 `publishTimestamp` 换成上一步查到的值。时间戳必须是正安全整数，不加引号；`version` 不加 `v`。`repository` 只含 `url`，`source` 只含 `type`、`url` 和 `commit`。`repository.url`、`source.url` 和 `plugins.txt` 里新增的 URL 要完全一致。没有最低运行环境要求时用 `engines: {}`；要注明 AGH 兼容范围，可在 `engines` 中只填写 `agh`，例如 `{"agh": ">=1.0.0"}`（范围是示例，请填实际要求）。`engines.agh` 必须是非空纯文本，最多 500 个 UTF-16 代码单元，不得含 `<` 或 `>`。
+把示例中的 `commit` 和 `publishTimestamp` 换成上一步查到的值。时间戳是 Git 提交者时间，单位为秒，取 `1` 到 `253402300799` 的整数，不加引号。`version` 不加 `v`。`repository` 只含 `url`，`source` 只含 `type`、`url` 和 `commit`。三处仓库 URL 的拼写要完全一致；包名和仓库都不能重复。
+
+没有兼容性声明时写 `engines: {}`。有声明时，复制真实的 `engines.agh` 范围，例如 `">=1.2.0 <2.0.0"`。范围最多 500 个 UTF-16 代码单元，须用 AGH 支持的语法，不能用 `||` 或连字符范围。第 5 步的命令会从固定提交的根清单生成 `provides`。
 
 不写展示字段也能投稿。如果要加，只使用以下可选字段，不要在索引条目中放插件清单或自定义字段：
 
@@ -153,19 +155,22 @@ git switch -c add-octo-cat-example upstream/main
 
 ## 5. 检查改动，向上游发起 PR
 
-在市场仓库根目录生成两份 README 表格，按上游基准校验，再检查差异：
+在市场仓库根目录生成该固定版本的 `provides` 和两份 README 表格，再按上游基准校验。将 `@octo-cat/example@1.2.3` 换成实际包名和版本：
 
 ```sh
 git fetch upstream main
+node tools/project-provides.mjs --write '@octo-cat/example@1.2.3'
 node tools/sync-readmes.mjs
 node tools/validate-index.mjs "$(git rev-parse upstream/main)"
 git diff --stat upstream/main
 git diff upstream/main
 ```
 
-本地检查核对 format 1、包名和仓库的唯一性、稳定版本、完整提交 SHA、已收录的包、仓库和版本没有换绑，以及表格与索引一致。它还会查询 GitHub，确认此次新增插件或提交新版的仓库都已设置 `agh-plugin` 话题。若遇到 GitHub API 未认证请求限流，先用 `gh auth login` 登录，在校验命令前加上 `GH_TOKEN="$(gh auth token)"` 后重跑。检查通过后再开 PR。
+投影命令和必过检查都会验证所列仓库的 `refs/tags/vX.Y.Z` 是否指向固定提交。必过检查还会核对 `agh-plugin` 话题、`provides` 是否与固定提交的根清单一致，以及 `publishTimestamp` 是否与该提交的 Git 提交者时间一致。
 
-本地检查不验证发版 tag 或授权。四个文件都应为不可执行的普通文件，不能是软链接；AGH 下载索引的上限是 2 MiB（2,097,152 字节）。
+缺少声明、值不匹配或无法取证都会阻止投稿。固定提交缺少有效声明时，请发布更高版本，不要猜测类型或移动旧 tag。读取 tag 和 Git 对象不使用凭据。GitHub 限流或无法访问时，等公开读取恢复后重试。
+
+本地校验不审核发版内容或验证账号授权。四个文件都应为不可执行的普通文件，不能是软链接；AGH 下载索引的上限是 2 MiB（2,097,152 字节）。
 
 首次上架的差异应只有一行来源、一个索引条目（及分隔逗号），以及两份 README 各一行生成记录。不要手改表格或周围的正文。确认后提交并推送到 fork：
 
@@ -188,13 +193,14 @@ git merge --no-commit upstream/main
 
 ```sh
 git restore --source=upstream/main --worktree -- README.md README.zh-CN.md
+node tools/project-provides.mjs --write '@octo-cat/example@1.2.3'
 node tools/sync-readmes.mjs
 node tools/validate-index.mjs "$(git rev-parse upstream/main)"
 git diff upstream/main
 git add -- plugins.txt docs/index.json README.md README.zh-CN.md
 ```
 
-如果合并尚未完成，运行 `git merge --continue`；否则提交新生成的改动。推送到原分支，让现有 PR 更新并等待新提交上的检查。引入 README 表格之前已打开的 PR 也按这个流程更新。
+运行投影命令时，传入实际投稿的包名和版本。若 PR 在固定版本元数据要求生效前打开，须运行该命令后再校验。如果合并尚未完成，运行 `git merge --continue`；否则提交新生成的改动。推送到原分支，等待新提交上的检查。
 
 ## 6. 看懂检查和审核报告
 
@@ -218,6 +224,7 @@ git add -- plugins.txt docs/index.json README.md README.zh-CN.md
 - `PUBLIC_SCOPE`：包作用域不符合仓库所有者规则，或使用了保留作用域。`PUBLIC_PROOF`：检查 tag 中的 `agh.market.json`、仓库地址和 PR 发起者的数字 ID；若发起者用错了账号，用已授权的账号重新开 PR。`PUBLIC_IDENTITY` 表示没能读取 PR 账号的数字 ID，不是 Git 提交作者写错了。
 - `TAG_MISSING`、`TAG_UNAVAILABLE`、`TAG_MISMATCH`：分别检查 tag 是否已推送、能否从标准公开地址直接读取、索引是否填了**提交** SHA。若只是索引填错，修正市场条目，不要移动 tag。
 - `MANIFEST`、`ENTRY`、`LICENSE`：核对根清单的包名、版本和 `agnes` 声明，确认所有入口及资源已提交，并包含许可证声明和文件。
+- `PROVIDES_MISMATCH`：核对 tag 是否指向预期提交。删除这次投稿的新版本中不正确的 `provides`，再运行第 5 步的投影命令。
 - `CAPABILITY_DECLARATION`、`PUBLIC_CAPABILITIES`、`CAPABILITY_REVIEW`：核对插件条目中的能力声明是否为对象、是否如实描述需要的能力。`INSTALL_HOOKS`、`RUNTIME_DEPENDENCIES`、`RUNTIME_APIS` 分别提示安装或打包生命周期脚本、运行时依赖、敏感 API（例如 `process.env`、`child_process`、`fetch`）；确有需要的交给维护者判断。
 - `PR_SECRET`、`RELEASE_SECRET`：私下核查，不在 PR 里粘贴命中值。若凭据已暴露，先吊销或轮换，再清理标题、描述或拟合入的历史；发版树有问题时，提交干净的新版本。删除最新文件中的一行不能清除历史中的泄露。报告不会展示命中值或原始扫描器输出。
 - `COVERAGE`、`OPAQUE`、`PR_BINARY`：检查软链接、子模块、Git LFS 指针、通配符导出、不受支持的路径、压缩包或未知二进制。不要提交无关的 `node_modules` 或 `fixtures/out`；审核上限为每文件 8 MiB、合计 40 MiB、最多 4,000 个文件。`LIMIT` 表示一次审核超过 12 个变更版本，拆成多个 PR；`SCAN_FAILED` 表示扫描未完成。
@@ -239,5 +246,7 @@ PR 合入上游 `main` 后，[中文](../README.zh-CN.md#已收录)和[英文](.
 ```
 
 按第 5 步重新生成、校验两份 README 表格，与目录数据一起暂存、提交并开 PR。仅修改插件展示信息不算可自动合并的版本更新。
+
+运行第 5 步的投影命令时，传入**新版本**的包名和版本。不要重新生成保留版本的记录。
 
 **下架插件：** 在同一个 PR 中删除 `plugins.txt` 中的仓库 URL 及其所有固定记录，并删除 `docs/index.json` 中对应的插件条目。按第 5 步重新生成和校验两份 README 表格，将对应行的删除一起提交。下架不走自动合并，请说明原因并等候维护者人工处理。发布流程的维护侧说明见[市场仓库首页](../README.zh-CN.md#无人值守审核合并和发布)。

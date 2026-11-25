@@ -16,7 +16,9 @@ The official plugin market index of [Agnes Harness](https://github.com/AgnesAI-L
 - a Git version `{ "type": "git", "url": U, "commit": C }` installs as `agh plugins add git:U#C`;
 - locale keys are lowercase (`zh-cn`), as format 1 requires; AGH maps them to its own locale ids.
 
-Each version pins the commit of its release tag. Until the full generator exists, `node tools/build-index.mjs <dir-with-clones>` rebuilds the index from local clones of the listed repositories (newest release tag of each). The output passes the DSH format 1 validator.
+New entries and versions must have `provides` copied from `agnes.provides` in the root `package.json` at the pin. Older versions without a recorded declaration stay unclassified. `publishTimestamp` records Git committer time in seconds (`%ct`), not publication time.
+
+Use `node tools/project-provides.mjs --write PACKAGE@VERSION` to fill in `provides` for a submission. `node tools/build-index.mjs <dir-with-clones>` still rebuilds the index from local clones using one release tag per repository. Do not use the rebuild command for a submission or an existing version's metadata.
 
 ## List your plugin
 
@@ -24,7 +26,7 @@ Each version pins the commit of its release tag. Until the full generator exists
 
 Follow the [public plugin submission guide](docs/submit-plugin.md) to prepare a release, open a market PR, and confirm publication. It also covers updates and removals.
 
-Before opening a market PR for a new listing or version, add the `agh-plugin` Topic to the plugin repository. The required `market / validate-index` check blocks merges if the Topic is missing or cannot be verified. Existing listings and removal PRs are unaffected.
+Before opening a market PR for a new listing or version, add the `agh-plugin` Topic to the plugin repository. The required `market / validate-index` check verifies the Topic, `provides`, and Git commit time against the exact public pin. Unchanged versions are not fetched.
 
 ### Release review (report only)
 
@@ -55,7 +57,7 @@ When enabled, **Market release publisher** runs after a successful PR index chec
 - A version update to an existing public listing in its repository-owner namespace that follows the pin and release-proof rules above, or a version update to an already indexed repository on the legacy allowlist in [`tools/publish-release.mjs`](tools/publish-release.mjs). The legacy allowlist includes `AgnesAI-Labs/agh-app-devboard`, `AgnesAI-Labs/agh-app-pharma-gmp`, and `AgnesAI-Labs/agh-app-aerospace-quality`.
 - A presentation-only change from a branch in this repository (not a fork): only the catalog's top-level `title` or `description` may change, with no changes to plugin entries or `plugins.txt`.
 
-Changes outside these categories, and repository or tooling changes (including changes to the legacy allowlist), require manual review and merge. The read-only audit uses trusted `main` code, never checks out or executes contributor code, and runs fresh index and Topic validation and release review against the current PR head. Only `passed` can proceed; `needs-review`, `failed`, and `incomplete` never qualify for automatic merge.
+Changes outside these categories, including historical metadata maintenance, require manual review and merge. The read-only audit uses trusted `main` code and runs fresh validation and release review against the current PR head. It never checks out or executes contributor code. Only `passed` can proceed; `needs-review`, `failed`, and `incomplete` never qualify for automatic merge.
 
 An isolated merge job uses the repository's short-lived `GITHUB_TOKEN` and requests a merge for the audited commit only. It does not post approvals or bypass any rule: GitHub still requires a pull request and the strict `market / validate-index` check (the PR must be up to date). No GitHub App, PAT, organization administrator, or bypass actor is needed.
 
@@ -71,6 +73,14 @@ Generate the two README tables with `node tools/sync-readmes.mjs` from the marke
 4. To roll back the deployment setup, disable the publisher and switch Pages back to **Deploy from a branch → `main` → `/docs`**, then verify the same public index URL. Branch-based publishing serves the index but does not generate the catalog HTML or legacy SVG assets. To undo a published catalog change, merge a revert PR through the normal checks and verify the resulting deployment.
 
 **Maintaining the submission process.** Any PR that changes the contributor-facing format, steps, eligibility, checks, or README sync must update both the [English](docs/submit-plugin.md) and [Chinese](docs/submit-plugin.zh-CN.md) tutorials in the same PR. CI checks that tutorial edits are paired; reviewers must check that both guides describe the new behavior accurately. Catalog-only submissions and maintenance that does not change the contribution process do not need tutorial edits.
+
+### Maintain historical plugin types
+
+Start from current `main`. Run `node tools/project-provides.mjs --check --historical` to report missing fields or `node tools/project-provides.mjs --write --historical` to fill them from pinned Git objects. Only use `--historical` for existing releases. If the exact release tag is missing or points elsewhere, the tool requires the pin to equal or be an ancestor of the listed repository's default branch tip.
+
+Pass one or more `PACKAGE@VERSION` arguments to process a smaller batch. GitHub allows 60 unauthenticated REST requests per hour per IP, shared with other requests. A check exits unsuccessfully when it reports pending writes. If a selected version cannot be verified, the tool reports why and writes nothing. Retry or select a verifiable batch. Leave fields missing when there is no proof or no declaration.
+
+Open an index-only PR for enrichment. Open a separate index-only PR to remove any mistakenly added `provides` fields. The required check traces each removal to an index-only enrichment on trusted `main` history. A maintainer must verify that evidence before merging. Neither type of PR qualifies for unattended publication or needs a Topic check.
 
 ## Listed plugins
 

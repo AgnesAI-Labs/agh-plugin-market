@@ -9,6 +9,7 @@ import { isDeepStrictEqual as equal } from 'node:util'
 import { publicRepository } from './public-submission.mjs'
 import { readmeLocales } from './readme-tables.mjs'
 import { validateCatalog } from './validate-index.mjs'
+import { newerRelease, validAghRange, validProvides, validTimestamp } from './release-metadata.mjs'
 
 const repository = 'AgnesAI-Labs/agh-plugin-market'
 const repoApi = `repos/${repository}`
@@ -72,23 +73,13 @@ const plainText = (value) => typeof value === 'string' && value.length > 0 && va
 const copyText = (value) => plainText(value) || (record(value) && Object.keys(value).length > 0
   && Object.entries(value).every(([locale, text]) => ['en', 'zh-cn'].includes(locale) && plainText(text)))
 
-function newer(candidate, previous) {
-  const parts = candidate.split('.')
-  const old = previous.split('.')
-  for (let i = 0; i < 3; i++) {
-    if (parts[i].length !== old[i].length) return parts[i].length > old[i].length
-    if (parts[i] !== old[i]) return parts[i] > old[i]
-  }
-  return false
-}
-
 function validRelease(release, url) {
-  return keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines']) && stable.test(release.version)
+  return keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines', 'provides']) && stable.test(release.version)
     && keysWithin(release.source, ['type', 'url', 'commit']) && release.source.type === 'git'
     && release.source.url === url && sha.test(release.source.commit)
-    && Number.isSafeInteger(release.publishTimestamp) && release.publishTimestamp > 0
+    && validTimestamp(release.publishTimestamp) && validProvides(release.provides)
     && keysWithin(release.engines, ['agh'])
-    && (!Object.hasOwn(release.engines, 'agh') || plainText(release.engines.agh))
+    && (!Object.hasOwn(release.engines, 'agh') || validAghRange(release.engines.agh))
 }
 
 function isNewListing(row) {
@@ -118,7 +109,7 @@ function isReleaseUpdate(before, after) {
       if (!equal(previous, release)) return false
       continue
     }
-    if (!validRelease(release, url) || !old.every((previous) => newer(release.version, previous.version))) return false
+    if (!validRelease(release, url) || !old.every((previous) => newerRelease(release.version, previous.version))) return false
     additions++
   }
   return additions > 0
@@ -174,7 +165,7 @@ export async function candidateCatalog(base, head, sameRepository) {
   try {
     await validateCatalog({ base, head, generatedOnly: true })
   } catch {
-    return { reason: 'index, submission Topic, or generated-only README validation did not pass' }
+    return { reason: 'index, pinned release metadata, submission Topic, or generated-only README validation did not pass' }
   }
   const sourcesChanged = changed.includes('plugins.txt')
   const next = readIndex(head)

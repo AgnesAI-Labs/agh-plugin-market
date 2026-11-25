@@ -141,7 +141,9 @@ Make the data changes in these two files:
 }
 ```
 
-Replace the sample name, both URLs, version, timestamp, and commit. Use one stable version (no `v`, at most 128 characters), a positive safe integer timestamp from step 3 (no quotes), and the actual full commit SHA. Use exactly the same URL spelling in both fields and in `plugins.txt`. `repository` has only `url`; `source` has only `type`, `url`, and `commit`. Use `engines: {}` if no AGH compatibility is declared; otherwise copy the real `agh` requirement, for example `"engines": {"agh": ">=1.2.0"}`. `agh` is the only allowed engine key and its value uses the same plain-text rule as below. Each package name and repository must be unique in the catalog.
+Replace the sample name, both URLs, version, timestamp, and commit. Use a stable version without `v` and with at most 128 characters. Set `publishTimestamp` to the Git committer time from step 3, as an integer from `1` to `253402300799` in seconds. Use the full commit SHA. Use the same URL spelling in both fields and in `plugins.txt`. `repository` has only `url`. `source` has only `type`, `url`, and `commit`. Each package name and repository must be unique.
+
+Use `engines: {}` if no AGH compatibility is declared. Otherwise, copy the actual `engines.agh` requirement, such as `">=1.2.0 <2.0.0"`. The range must be at most 500 UTF-16 code units and use syntax supported by AGH. Do not use `||` or hyphen ranges. The projection command in step 5 fills in `provides` from the pinned manifest.
 
 The sample omits optional display fields. If you add them to the new row:
 
@@ -152,14 +154,15 @@ The sample omits optional display fields. If you add them to the new row:
 | `homepage` | Exactly the same URL as `repository.url`. |
 | `metadata` | Only `keywords`, `labels`, and `sortKeys`. Use `keywords` from the manifest or `[]`, up to 32 nonempty plain strings of at most 64 characters each and no `<` or `>`; use exactly `[]` for `labels` and `{}` for `sortKeys`. |
 
-The row above is otherwise complete; you do not need to clone anyone else's plugins or rebuild the index. The two README tables are generated from the index in the next step. Keep the four submission files ordinary and non-executable and the index within 2 MiB (2,097,152 bytes).
+You do not need to clone other plugins or rebuild the index. Keep the four submission files ordinary and non-executable and the index within 2 MiB (2,097,152 bytes).
 
 ## 5. Check the diff and open the pull request
 
-From the **market** checkout, regenerate both README tables, validate the catalog against the upstream base, and review the diff:
+From the **market** checkout, generate the pinned version's `provides` and both README tables, then validate against the upstream base. Replace `@octo-cat/example@1.2.3` with your package name and version:
 
 ```sh
 git fetch upstream main
+node tools/project-provides.mjs --write '@octo-cat/example@1.2.3'
 node tools/sync-readmes.mjs
 node tools/validate-index.mjs "$(git rev-parse upstream/main)"
 git status --short
@@ -167,9 +170,11 @@ git diff --stat upstream/main
 git diff upstream/main
 ```
 
-The validator checks the format-1 index, unique names and repositories, Git sources and commits, and agreement between the source list, index, and both README tables. It also queries GitHub to verify `agh-plugin` on each repository submitting a new listing or version. If GitHub rate-limits the unauthenticated request, sign in with `gh auth login` and rerun the validation command prefixed with `GH_TOKEN="$(gh auth token)"`. Do not open the PR until validation passes.
+The projection command and the required check both verify that `refs/tags/vX.Y.Z` in the listed repository resolves to the pinned commit. The required check also verifies the `agh-plugin` Topic, compares `provides` with the pinned root manifest, and compares `publishTimestamp` with that commit's Git committer time.
 
-The validator does not fetch the tag or review the release. The diff for a first listing should contain only your new URL, your new index row (plus the JSON separator), and its generated row in each README. Do not hand-edit either table or change surrounding README text. Then commit and push the branch to your fork:
+A missing declaration, mismatched value, or unavailable evidence blocks the submission. If the pinned manifest lacks a valid declaration, publish a new version with one. Do not guess a value or move an existing tag. Tag and Git object requests do not use credentials. If GitHub rate limits public requests or is unavailable, retry when access returns.
+
+The validator does not review release contents or verify account authorization. The diff for a first listing should contain only your new URL, your new index row (plus the JSON separator), and its generated row in each README. Do not hand-edit either table or change surrounding README text. Then commit and push the branch to your fork:
 
 ```sh
 git add -- plugins.txt docs/index.json README.md README.zh-CN.md
@@ -190,13 +195,14 @@ If the source list or index conflicts, keep the upstream rows intact and append 
 
 ```sh
 git restore --source=upstream/main --worktree -- README.md README.zh-CN.md
+node tools/project-provides.mjs --write '@octo-cat/example@1.2.3'
 node tools/sync-readmes.mjs
 node tools/validate-index.mjs "$(git rev-parse upstream/main)"
 git diff upstream/main
 git add -- plugins.txt docs/index.json README.md README.zh-CN.md
 ```
 
-If the merge is in progress, finish it with `git merge --continue`. Otherwise commit any regenerated changes. Push to the same branch and wait for the checks on the new revision. For PRs opened before README tables were introduced, use this same update procedure before merging.
+Use your actual package name and submitted version in the projection command. Run it before validating a PR opened before the pinned metadata requirement. If the merge is in progress, finish it with `git merge --continue`. Otherwise commit any regenerated changes. Push to the same branch and wait for the checks on the new revision.
 
 ## 6. Follow review and confirm publication
 
@@ -212,6 +218,7 @@ Open the PR's `market / validate-index` check and the `market / review-release` 
 | `PUBLIC_SCOPE`, `PUBLIC_PROOF`, `PUBLIC_IDENTITY` | Check the package's owner scope, the authorized numeric ID, and the two-key proof in the exact tagged commit. If the PR opener is wrong, an authorized account must open the PR. If the proof or manifest needs changing, publish a new release. If only GitHub's account ID was unavailable to the reviewer, retry or ask a maintainer to investigate. |
 | `TAG_MISSING`, `TAG_UNAVAILABLE`, `TAG_MISMATCH` | Check the public URL and the exact tag with step 3. Publish an absent tag for the intended release, or fix an incorrect index SHA to match the existing tag's commit. Do not retag. |
 | `MANIFEST`, `ENTRY`, `LICENSE` | Check the indexed name and version, AGH declaration, tagged runtime files, and both license items. For release changes, publish a new version. |
+| `PROVIDES_MISMATCH` | Verify the tag points to the intended commit. Remove the incorrect `provides` from the proposed new version and run the projection command from step 5. |
 | `CAPABILITY_DECLARATION`, `PUBLIC_CAPABILITIES`, `CAPABILITY_REVIEW`, `INSTALL_HOOKS`, `RUNTIME_DEPENDENCIES`, `RUNTIME_APIS` | Fix an inaccurate declaration or ask for manual review of what the plugin actually needs. Do not omit a real capability to pass the check. |
 | `PR_SECRET`, `RELEASE_SECRET` | Investigate privately. Revoke or rotate anything exposed before removing it from the proposed PR history and, for a release leak, submitting a clean new release. Deleting it in a later commit does not clean the old commit; the report does not show matched values. |
 | `INVALID_INDEX`, `PR_UNAVAILABLE`, `PR_BINARY`, `COVERAGE`, `OPAQUE`, `SCAN_FAILED`, `LIMIT`, `INTERNAL` | Address the index error, unreadable PR data, or missing scan coverage in the report. Retry transient scanner or network failures, and split a batch with more than 12 changed releases. |
@@ -228,6 +235,6 @@ For an update, confirm the plugin repository still has the `agh-plugin` Topic, t
 # pin: https://github.com/Octo-Cat/agh-example 1.2.4 FULL_COMMIT_SHA
 ```
 
-If you replace an older entry, remove its old pin if present. If you keep an entry, preserve it unchanged: an indexed version cannot be pointed at a new commit. Make the new version and its pin agree, then follow step 5 to regenerate, validate, and stage both README tables with the catalog files, and open the PR. Display-only edits to a plugin row do not qualify as automatic version updates.
+If you replace an older entry, remove its old pin if present. If you keep an entry, preserve the entire record unchanged. Run step 5 for the new package version after you set its pin, then include the generated data and both README tables in the PR. Display-only edits to a plugin row do not qualify as automatic version updates.
 
 To remove a listing, open a PR that removes its source URL, all its pins, and its index entry together. Follow step 5 to regenerate, validate, and include the README tables so the same PR removes both display rows. Explain the reason in the PR; removals require manual review and merge.

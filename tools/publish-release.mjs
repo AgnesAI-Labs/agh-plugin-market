@@ -1,4 +1,3 @@
-import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -8,10 +7,14 @@ import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { isDeepStrictEqual as equal } from 'node:util'
 import { publicRepository } from './public-submission.mjs'
+import { readmeLocales } from './readme-tables.mjs'
+import { validateCatalog } from './validate-index.mjs'
+import { newerRelease, validAghRange, validProvides, validTimestamp } from './release-metadata.mjs'
 
 const repository = 'AgnesAI-Labs/agh-plugin-market'
 const repoApi = `repos/${repository}`
 const index = 'docs/index.json'
+const catalogPaths = new Set([index, 'plugins.txt', ...Object.keys(readmeLocales)])
 const maxIndexBytes = 2 * 1024 * 1024
 const releaseSources = new Set([
   'https://github.com/AgnesAI-Labs/agh-app-devboard',
@@ -70,23 +73,13 @@ const plainText = (value) => typeof value === 'string' && value.length > 0 && va
 const copyText = (value) => plainText(value) || (record(value) && Object.keys(value).length > 0
   && Object.entries(value).every(([locale, text]) => ['en', 'zh-cn'].includes(locale) && plainText(text)))
 
-function newer(candidate, previous) {
-  const parts = candidate.split('.')
-  const old = previous.split('.')
-  for (let i = 0; i < 3; i++) {
-    if (parts[i].length !== old[i].length) return parts[i].length > old[i].length
-    if (parts[i] !== old[i]) return parts[i] > old[i]
-  }
-  return false
-}
-
 function validRelease(release, url) {
-  return keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines']) && stable.test(release.version)
+  return keysWithin(release, ['version', 'source', 'publishTimestamp', 'engines', 'provides']) && stable.test(release.version)
     && keysWithin(release.source, ['type', 'url', 'commit']) && release.source.type === 'git'
     && release.source.url === url && sha.test(release.source.commit)
-    && Number.isSafeInteger(release.publishTimestamp) && release.publishTimestamp > 0
+    && validTimestamp(release.publishTimestamp) && validProvides(release.provides)
     && keysWithin(release.engines, ['agh'])
-    && (!Object.hasOwn(release.engines, 'agh') || plainText(release.engines.agh))
+    && validAghRange(release.engines.agh)
 }
 
 function isNewListing(row) {
@@ -116,7 +109,7 @@ function isReleaseUpdate(before, after) {
       if (!equal(previous, release)) return false
       continue
     }
-    if (!validRelease(release, url) || !old.every((previous) => newer(release.version, previous.version))) return false
+    if (!validRelease(release, url) || !old.every((previous) => newerRelease(release.version, previous.version))) return false
     additions++
   }
   return additions > 0
@@ -155,11 +148,39 @@ function sourcesMatch(kind, base, head, next) {
   return equal(withoutPins(base), withoutPins(head))
 }
 
+// Both refs have already been verified against the PR and the trusted main checkout.
+export async function candidateCatalog(base, head, sameRepository) {
+  const paths = checked(git(['diff', '--no-ext-diff', '--no-renames', '--name-only', '-z', base, head]), 'Could not list PR paths.')
+  const changed = paths.toString().split('\0').slice(0, -1)
+  if (!changed.includes(index) || changed.some((path) => !catalogPaths.has(path))) {
+    return { reason: 'only catalog submissions can be merged automatically' }
+  }
+  const entries = String(checked(git(['ls-tree', head, '--', ...catalogPaths]), 'Could not read catalog Git entries.')).trimEnd().split('\n')
+  if (entries.length !== catalogPaths.size || entries.some((entry) => {
+    const match = /^100644 blob [0-9a-f]{40}\t(.+)$/.exec(entry)
+    return !match || !catalogPaths.has(match[1])
+  })) {
+    return { reason: 'catalog inputs and READMEs must be regular non-executable files' }
+  }
+  try {
+    await validateCatalog({ base, head, generatedOnly: true })
+  } catch {
+    return { reason: 'index, pinned release metadata, submission Topic, or generated-only README validation did not pass' }
+  }
+  const sourcesChanged = changed.includes('plugins.txt')
+  const next = readIndex(head)
+  const kind = catalogChange(readIndex(base), next, { sameRepository, sourcesChanged })
+  if (!kind || (sourcesChanged && !sourcesMatch(kind, sourceList(base), sourceList(head), next))) {
+    return { reason: 'catalog changes do not qualify for unattended publication' }
+  }
+  return { kind }
+}
+
 function output(key, value) {
   if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`, { flag: 'a' })
 }
 
-function audit() {
+async function audit() {
   const base = checkedOutSha()
   if (!sha.test(base) || mainSha() !== base) {
     log('main moved since checkout; no candidate can be authorized in this run.')
@@ -178,32 +199,14 @@ function audit() {
       log(`PR #${number}: could not verify the current head against main.`)
       continue
     }
-    const paths = checked(git(['diff', '--no-ext-diff', '--no-renames', '--name-only', '-z', base, head]), 'Could not list PR paths.')
-    const changed = paths.toString().split('\0').slice(0, -1)
-    if (!changed.includes(index) || changed.some((path) => path !== index && path !== 'plugins.txt')) {
-      log(`PR #${number}: only catalog submissions can be merged automatically.`)
-      continue
-    }
-    const entries = String(checked(git(['ls-tree', head, '--', index, 'plugins.txt']), 'Could not read catalog Git entries.')).trimEnd().split('\n')
-    if (entries.length !== 2 || entries.some((entry) => !/^100644 blob [0-9a-f]{40}\t(?:docs\/index\.json|plugins\.txt)$/.test(entry))) {
-      log(`PR #${number}: catalog inputs are not both regular data files.`)
+    const { kind, reason } = await candidateCatalog(base, head, pr.head.repo?.full_name === repository)
+    if (!kind) {
+      log(`PR #${number}: ${reason}.`)
       continue
     }
     const dir = mkdtempSync(join(tmpdir(), 'market-publication-'))
     try {
       const env = { ...process.env, GITHUB_OUTPUT: '', GITHUB_STEP_SUMMARY: '' }
-      const validation = run(process.execPath, ['tools/validate-index.mjs', base, head], { env })
-      if (validation.error || validation.status !== 0) {
-        log(`PR #${number}: index validation did not pass.`)
-        continue
-      }
-      const sourcesChanged = changed.includes('plugins.txt')
-      const next = readIndex(head)
-      const kind = catalogChange(readIndex(base), next, { sameRepository: pr.head.repo?.full_name === repository, sourcesChanged })
-      if (!kind || (sourcesChanged && !sourcesMatch(kind, sourceList(base), sourceList(head), next))) {
-        log(`PR #${number}: catalog changes do not qualify for unattended publication.`)
-        continue
-      }
       const event = join(dir, 'event.json')
       writeFileSync(event, JSON.stringify({ pull_request: pr }), { mode: 0o600 })
       const evidence = join(dir, 'outcome.txt')
@@ -253,42 +256,64 @@ function merge(text) {
   output('merged_sha', result.sha)
 }
 
-async function verifyPages(revision) {
+async function matchesPage(url, expected) {
+  try {
+    const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(5_000) })
+    if (!response.ok || !response.body) {
+      await response.body?.cancel()
+      return false
+    }
+    let size = 0
+    for await (const chunk of response.body) {
+      const end = size + chunk.length
+      if (end > expected.length || !expected.subarray(size, end).equals(chunk)) return false
+      size = end
+    }
+    return size === expected.length
+  } catch { // Pages can be unavailable while redeploying.
+    return false
+  }
+}
+
+async function verifyPages(revision, site) {
   if (!sha.test(revision ?? '') || checkedOutSha() !== revision) throw new Error('Pages verification must use the deployed checkout.')
-  const expected = checked(git(['cat-file', 'blob', `${revision}:${index}`], { maxBuffer: maxIndexBytes + 1 }), 'Cannot read deployed index.')
-  if (expected.length > maxIndexBytes) throw new Error('Deployed index is over the download limit.')
-  const url = new URL('https://agnesai-labs.github.io/agh-plugin-market/index.json')
+  const committed = checked(git(['cat-file', 'blob', `${revision}:${index}`], { maxBuffer: maxIndexBytes + 1 }), 'Cannot read deployed index.')
+  if (committed.length > maxIndexBytes) throw new Error('Deployed index is over the download limit.')
+  const staged = readFileSync(join(site, 'index.json'))
+  if (!staged.equals(committed)) throw new Error(`The staged index does not match ${revision}.`)
+
+  const assets = [
+    ['index.json', staged],
+    ...['plugins.html', 'plugins.zh-CN.html', 'plugins.svg', 'plugins.zh-CN.svg']
+      .map((name) => [name, readFileSync(join(site, name))]),
+  ].map(([name, expected]) => ({
+    name, expected, url: new URL(`https://agnesai-labs.github.io/agh-plugin-market/${name}`),
+  }))
+  let mismatches
   for (let attempt = 0; attempt < 18; attempt++) {
-    url.search = new URLSearchParams({ revision, attempt })
-    try {
-      const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(5_000) })
-      if (response.ok && response.body) {
-        const buffer = Buffer.allocUnsafe(expected.length)
-        let size = 0
-        for await (const chunk of response.body) {
-          if (size + chunk.length > buffer.length) { size = -1; break }
-          buffer.set(chunk, size)
-          size += chunk.length
-        }
-        if (size === buffer.length && buffer.equals(expected)) {
-          log(`Pages serves the exact index from ${revision}.`)
-          return
-        }
-      } else await response.body?.cancel()
-    } catch { /* Pages can be unavailable while redeploying. */ }
+    const query = new URLSearchParams({ revision, attempt }).toString()
+    const matches = await Promise.all(assets.map(({ url, expected }) => {
+      url.search = query
+      return matchesPage(url, expected)
+    }))
+    if (matches.every(Boolean)) {
+      log(`Pages serves the exact staged index and catalog assets from ${revision}.`)
+      return
+    }
+    mismatches = assets.filter((_, i) => !matches[i]).map(({ name }) => name)
     if (attempt < 17) await delay(10_000)
   }
-  throw new Error(`The published index did not match ${revision} within the verification window.`)
+  throw new Error(`Pages assets did not match ${revision} within the verification window: ${mismatches.join(', ')}.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     if (process.env.GITHUB_REPOSITORY !== repository || process.env.GITHUB_REF !== 'refs/heads/main') throw new Error('Publisher must run against the trusted main checkout.')
     const [mode, arg, ...rest] = process.argv.slice(2)
-    if (mode === 'audit' && !arg && rest.length === 0) audit()
+    if (mode === 'audit' && !arg && rest.length === 0) await audit()
     else if (mode === 'merge' && arg && rest.length === 0) merge(arg)
-    else if (mode === 'verify-pages' && arg && rest.length === 0) await verifyPages(arg)
-    else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages DEPLOYED_SHA')
+    else if (mode === 'verify-pages' && arg && rest.length === 1 && rest[0]) await verifyPages(arg, rest[0])
+    else throw new Error('Usage: publish-release.mjs audit | merge PLAN | verify-pages DEPLOYED_SHA SITE_DIR')
   } catch (error) {
     // Unknown errors can contain API responses, commit content or other untrusted input.
     console.error(error.constructor === Error ? error.message : 'Market publication could not complete.')

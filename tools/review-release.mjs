@@ -4,7 +4,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isDeepStrictEqual as equal } from 'node:util'
 import { authorizedSubmitter, canonicalRepository, publicRepository } from './public-submission.mjs'
+import { manifestProvides } from './release-metadata.mjs'
 
 const MiB = 1024 * 1024
 const sha = /^[0-9a-f]{40}$/
@@ -24,6 +26,7 @@ const messages = {
   TAG_MISMATCH: 'The release tag does not resolve to the indexed commit. Update the proposal to the intended immutable release.',
   MANIFEST: 'Root package.json is missing or does not match the indexed name/version and AGH plugin declaration. Use distinct documented agnes.provides labels.',
   ENTRY: 'An entry, client descriptor or declared local asset is missing or invalid. Include the runtime files in the tagged Git tree.',
+  PROVIDES_MISMATCH: 'Indexed provides must match agnes.provides in the exact tagged commit, in the same order.',
   LICENSE: 'No license declaration or license file was found. Include licensing information before listing.',
   COVERAGE: 'Some release paths, objects or entry patterns were not reviewed. Check for links, submodules, Git LFS pointers, unsupported paths or review limits.',
   OPAQUE: 'Archive, native or unrecognized binary content is outside scan coverage.',
@@ -45,8 +48,8 @@ function run(program, args, options = {}) {
   return spawnSync(program, args, { maxBuffer: 4 * MiB, timeout: 60_000, ...options })
 }
 
-function git(args, { maxBuffer, input } = {}) {
-  return run('git', [...gitOptions, ...args], { ...maxBuffer && { maxBuffer }, input })
+function git(args, { maxBuffer, input, env } = {}) {
+  return run('git', [...gitOptions, ...args], { ...maxBuffer && { maxBuffer }, input, env })
 }
 
 function output(result) {
@@ -64,7 +67,7 @@ function readIndex(ref) {
       const { url, commit, type } = entry?.source ?? {}
       const repo = canonicalRepository(url)
       if (type !== 'git' || !repo || typeof commit !== 'string' || !sha.test(commit) || typeof entry.version !== 'string' || !version.test(entry.version) || entry.version.length > 128) throw new Error('index')
-      return { name: row.name, repo, url, commit, version: entry.version }
+      return { name: row.name, repo, url, commit, version: entry.version, provides: entry.provides }
     })
   })
 }
@@ -239,22 +242,27 @@ function materialize(repo, tree, dir, row) {
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const nonempty = (value) => Array.isArray(value) ? value.length > 0 : record(value) ? Object.keys(value).length > 0 : Boolean(value)
 const risky = ['network', 'network.publicRead', 'exec', 'secrets', 'credentials', 'managedServices', 'childAgents', 'subagent']
-const provides = new Set(['tool', 'loop', 'model-adapter', 'mcp', 'skills', 'ui', 'bundle', 'service'])
-function checkManifest({ paths, complete }, candidate, row, publicSubmission) {
+function checkManifest({ paths, complete }, candidate, row, publicSubmission, requireIndexedProvides) {
   const json = (path) => JSON.parse(readFileSync(paths.get(path)))
   const unavailable = (path) => paths.get(path) === undefined && (!complete || paths.has(path))
   if (unavailable('package.json')) return
   let pkg
-  try { pkg = json('package.json') } catch { /* Report without echoing the manifest. */ }
-  const agnes = pkg?.agnes
-  if (pkg?.name !== candidate.name || pkg?.version !== candidate.version || !record(agnes) ||
-      !Array.isArray(agnes.provides) || !agnes.provides.length || agnes.provides.length > provides.size ||
-      agnes.provides.some((kind) => !provides.has(kind)) || new Set(agnes.provides).size !== agnes.provides.length ||
-      agnes.extensions !== undefined || paths.has('agnes.extension.json') ||
+  let provides
+  try {
+    pkg = json('package.json')
+    provides = manifestProvides(pkg, candidate)
+  } catch {
+    return finding(row, 'MANIFEST', 'failed')
+  }
+  const { agnes } = pkg
+  if (!provides || agnes.extensions !== undefined || paths.has('agnes.extension.json') ||
       (agnes.plugins !== undefined && (!Array.isArray(agnes.plugins) || agnes.plugins.some((plugin) =>
         !record(plugin) || typeof plugin.export !== 'string' || !plugin.export || typeof plugin.apiRange !== 'string' || !plugin.apiRange)))) {
     finding(row, 'MANIFEST', 'failed')
     return
+  }
+  if ((requireIndexedProvides || candidate.provides !== undefined) && !equal(candidate.provides, provides)) {
+    finding(row, 'PROVIDES_MISMATCH', 'failed')
   }
   const entries = (value, prefix = '') => {
     const relative = typeof value === 'string' ? value.replace(/^\.\//, '') : undefined
@@ -313,7 +321,7 @@ function checkPublicProof(paths, url, actor, row) {
   if (!authorizedSubmitter(declaration, url, actor)) finding(row, 'PUBLIC_PROOF', 'failed')
 }
 
-function reviewRelease(candidate, row, root, firstListing, actor) {
+function reviewRelease(candidate, row, root, firstListing, actor, requireIndexedProvides) {
   const publicSubmission = publicRepository(candidate.name, candidate.url)
   if (publicSubmission) {
     if (actor === null) finding(row, 'PUBLIC_IDENTITY', 'incomplete')
@@ -325,10 +333,14 @@ function reviewRelease(candidate, row, root, firstListing, actor) {
   const repo = join(root, 'git')
   const payload = join(root, 'payload')
   mkdirSync(payload, { recursive: true })
-  output(git(['init', '--bare', '--template=', repo]))
+  const env = {
+    PATH: process.env.PATH, HOME: root, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '/bin/false',
+  }
+  output(git(['init', '--bare', '--object-format=sha1', '--template=', repo], { env }))
   const ref = `refs/tags/v${candidate.version}`
   const remote = `https://github.com/${candidate.repo}.git`
-  const result = git(['-C', repo, 'fetch', '--no-tags', '--depth=1', '--no-recurse-submodules', remote, ref])
+  const result = git(['-C', repo, 'fetch', '--no-tags', '--depth=1', '--no-recurse-submodules', remote, ref], { env })
   if (result.status !== 0 && result.stderr?.includes(Buffer.from("couldn't find remote ref "))) return finding(row, 'TAG_MISSING', 'failed')
   if (result.status !== 0 || result.error) return finding(row, 'TAG_UNAVAILABLE', 'incomplete')
   if (output(git(['-C', repo, 'rev-parse', '--verify', 'FETCH_HEAD^{commit}'])).toString().trim() !== candidate.commit) return finding(row, 'TAG_MISMATCH', 'failed')
@@ -337,7 +349,7 @@ function reviewRelease(candidate, row, root, firstListing, actor) {
   stage(row, join(payload, 'paths.txt'), `\n${[...tree.paths.keys()].join('\n')}`, 'COVERAGE')
   scan(row, payload, dirname(root), 'RELEASE_SECRET')
   if (publicSubmission && actor !== null) checkPublicProof(tree.paths, candidate.url, actor, row)
-  checkManifest(tree, candidate, row, publicSubmission)
+  checkManifest(tree, candidate, row, publicSubmission, requireIndexedProvides)
 }
 
 const stateOf = (findings) => ['failed', 'incomplete', 'needs-review'].find((state) => findings.some((entry) => entry.state === state)) ?? 'passed'
@@ -369,7 +381,7 @@ try {
     report.push(row)
     const workspace = join(root, `release-${i}`)
     const firstListing = !all && !previousListings.has(listingKey(candidate))
-    try { reviewRelease(candidate, row, workspace, firstListing, actor) }
+    try { reviewRelease(candidate, row, workspace, firstListing, actor, !all) }
     catch { finding(row, 'INTERNAL', 'incomplete') }
     finally { rmSync(workspace, { recursive: true, force: true }) }
   }

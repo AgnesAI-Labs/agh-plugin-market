@@ -26,6 +26,8 @@ Use `node tools/project-provides.mjs --write PACKAGE@VERSION` to fill in only `p
 
 Follow the [public plugin submission guide](docs/submit-plugin.md) to prepare a release, open a market PR, and confirm publication. It also covers updates and removals.
 
+If your new or updated plugin has a UI, see [how to choose and test it before submission](docs/submit-plugin.md#plugin-ui-before-submission).
+
 Before opening a market PR for a new listing or version, add the `agh-plugin` Topic to the plugin repository. The required `market / validate-index` check verifies the Topic, then checks `provides`, `engines.agh`, and Git committer time against the exact public pin. The range records the author's compatibility declaration, not an installation or compatibility test. Unchanged versions are not fetched.
 
 ### Release review (report only)

@@ -863,6 +863,36 @@
           "provides": ["skills","bundle"]
         }
       ]
+    },
+    {
+      "name": "@wblxr408/desktop-pet",
+      "title": {
+        "en": "Agnes Desktop Pet",
+        "zh-cn": "Agnes 桌宠"
+      },
+      "description": {
+        "en": "An animated pet that reacts to the open Agnes Harness conversation.",
+        "zh-cn": "随 Agnes Harness 当前会话状态变化的悬浮动画桌宠。"
+      },
+      "author": "wblxr408",
+      "repository": {
+        "url": "https://github.com/wblxr408/agh-desktop-pet"
+      },
+      "versions": [
+        {
+          "version": "0.1.3",
+          "publishTimestamp": 1795697582,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/wblxr408/agh-desktop-pet",
+            "commit": "d9738b900f50640682a64a16b37410b9d535d3a4"
+          },
+          "engines": {
+            "agh": ">=0.1.0 <0.2.0"
+          },
+          "provides": ["ui"]
+        }
+      ]
     }
   ]
 }

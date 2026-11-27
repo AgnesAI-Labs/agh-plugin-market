@@ -39,6 +39,29 @@
 - 如果声明了 `agnes.plugins`，每个插件条目都要有非空的 `export` 和 `apiRange`；有插件条目时，清单还要有 `main` 或 `exports`。自动准入要求每个显式插件条目的 `capabilities` 都是空对象 `{}`；上面的 Bundle 没有插件条目，不必补这个字段。确实需要能力时请如实声明，走人工审核，不要隐瞒权限。
 - 入口、客户端描述文件及其入口和皮肤 CSS、图标等声明的本地资源，都必须在 tag 指向的 Git 提交中。如果入口指向构建产物，请在发版前把所需产物提交到 Git；只存在于本地、GitHub Release 附件或 npm 上的不算。准备插件时，可参阅 AGH 的[插件类型指南](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/choose-a-plugin-type.zh-CN.md)和 [Bundle 指南](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/bundles-and-profiles.zh-CN.md)。
 
+<a name="plugin-ui-before-submission"></a>
+
+### 投稿前选择插件的界面方式
+
+首次上架或提交新版时，先确定插件在 AGH 中如何呈现。市场收录和静态发版审核不会安装、信任或启用插件。在 AGH 中安装、信任并启用插件后，后端功能可按原有权限使用，但这并不授权插件在官方工作台加载原生 JavaScript 或 CSS。
+
+原生界面的批准只针对审阅过的具体客户端。`documentAdmission` 由 AGH 生成，不是插件清单或市场索引字段。`provides` 中的 `ui` 标签不授予任何权限。
+
+| 你的需求 | 推荐方式 |
+| --- | --- |
+| 没有界面 | 沿用现有的上架或更新流程。 |
+| 在设置、侧栏或工作台提供简短说明或配置入口 | 在受信任且已启用的托管安装中使用可选的 [`agnes.plugins[].uiEntries`](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/develop/frontend.zh-CN.md)。AGH 渲染入口，不加载插件的 JavaScript 或 CSS。 |
+| 会话中的卡片、表格或表单 | 优先使用官方 [Intelligent UI](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/develop/intelligent-ui-web.zh-CN.md)。无需采用整个应用，也不接受生成的 JavaScript。 |
+| 原生页面、工作台标签页或替换标准界面 | 声明实际提供的页面及其位置，或要替换的[界面角色](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/presentations.zh-CN.md)。在 **设置 → 应用**中[预览并明确采用应用](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/applications.zh-CN.md)，或在适用时明确选择该界面角色。 |
+
+如果提供原生界面，建议用干净的目标 AGH 实例测试拟投稿的确切 tag 和固定提交：
+
+1. 安装、信任并启用插件，不采用应用，也不选择界面角色。确认仍显示官方界面；如插件声称提供后端功能，也确认这些功能可用。
+2. 通过采用应用或选择界面角色，预览并批准该客户端。确认预期界面确实出现，包括插件声明的**更多**菜单页面和工作台标签页。
+3. 撤销批准，确认恢复官方界面。
+
+在插件 README 或市场 PR 描述中记录实测的 AGH 版本、插件提交、所需的启用和批准步骤，以及测试结果。`engines.agh` 是作者的兼容性声明，不是测试结果。按实际支持的版本填写，不要猜测最低版本。这些是测试建议，不新增市场投稿检查。
+
 ### 将第三方 JS 依赖打包进发版产物
 
 如果插件使用可以打包的纯 JavaScript 依赖，推荐在**发版前**用 esbuild、Rollup 等工具把依赖打进入口产物（例如 `dist/index.js`），而不是等用户安装插件后再下载依赖。
@@ -239,6 +262,8 @@ PR 合入上游 `main` 后，[中文](../README.zh-CN.md#已收录)和[英文](.
 接着打开 AGH 的 **插件 → 市场**，按包名或标题搜索并查看版本。如果线上索引已更新、AGH 仍展示旧结果，可重新打开或刷新市场页面，稍后再查；AGH 可能还在使用本地缓存，页面刷新不一定会立即重新下载索引。如果 PR 已合并但线上索引还不对，查看部署作业的结果，不要为同一版本重复开 PR。
 
 ## 已上架后：发新版或下架
+
+如果插件带有界面，请为新版本参照[第 1 步的插件界面指南](#plugin-ui-before-submission)。
 
 **更新公开插件：** 先确认插件仓库仍有 `agh-plugin` 话题，再按上面的流程发布更高的稳定版，确保新 tag 的提交中有有效的授权文件，并且授权了这次发起市场 PR 的账号。市场 PR 仍从最新的 `upstream/main` 创建分支；只更新数据中的相关 `versions` 和 `# pin:` 行，保持索引顶层字段、插件条目顺序、插件条目的非版本字段和来源 URL 行不变。新增的版本须严格高于该条目里原有的每一个版本；保留旧版本时，原版本记录（尤其提交 SHA）保持不变。可替换唯一的旧版本，但不能只删版本、不添加明确固定的新版本。
 

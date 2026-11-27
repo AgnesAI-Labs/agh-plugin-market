@@ -46,6 +46,29 @@ For your own package, choose the [plugin kind](https://github.com/AgnesAI-Labs/a
 - For automatic public admission, every explicit `agnes.plugins` entry must have `"capabilities": {}`. A data-only Bundle like the example has no such entries and needs no capability declaration. Declare the capabilities you actually need: nonempty capabilities, install lifecycle scripts, runtime dependencies (including optional, peer, and bundled dependencies), or sensitive API references such as environment access, network calls, or child processes require manual review.
 - Do not commit secrets or machine-local credentials. Keep the release reviewable: links, submodules, Git LFS pointers, unsupported or unsafe paths, `node_modules`, and `fixtures/out` leave gaps in review coverage. Opaque archives, native code, and unrecognized binary files are not covered; recognized media may be listed but its binary contents are not scanned. Keep the tagged tree within the review limits of 4,000 files, 8 MiB per file, and 40 MiB total.
 
+<a name="plugin-ui-before-submission"></a>
+
+### Choose your plugin UI before submission
+
+For a first listing or an update, choose how your plugin should appear in AGH. Market listing and static release review do not install, trust, or enable the plugin. Installing, trusting, and enabling it in AGH can make its backend features available under their existing permissions, but do not authorize its native JavaScript or CSS in the official Workbench.
+
+Native UI approval covers the exact client reviewed. AGH produces `documentAdmission`. It is not a plugin manifest or market index field. The `ui` label in `provides` grants no permission.
+
+| What you need | Which path to use |
+| --- | --- |
+| No UI | Keep the existing submission or update flow. |
+| Short explanation or configuration link in Settings, the sidebar, or the Workbench | Use optional [`agnes.plugins[].uiEntries`](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/develop/frontend.md) on a managed install that is trusted and enabled. AGH renders the entry without loading plugin JavaScript or CSS. |
+| Session cards, tables, or forms | Prefer official [Intelligent UI](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/develop/intelligent-ui-web.md). It does not require full application adoption or accept generated JavaScript. |
+| Native page, Workbench tab, or standard interface replacement | Declare the actual page and where it appears, or the [presentation role](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/presentations.md) you replace. In **Settings → Application**, [preview and explicitly adopt the application](https://github.com/AgnesAI-Labs/agnes-harness/blob/main/docs/extend/applications.md), or explicitly choose the role where appropriate. |
+
+For native UI, test the exact tag and pinned commit you plan to submit on a clean instance of your target AGH version:
+
+1. Install, trust, and enable the plugin without adopting the application or choosing a role. Confirm that the official interface stays in place and that the backend features you claim work, where applicable.
+2. Preview and approve the exact client through application adoption or role choice. Confirm that the intended UI appears, including pages under **More** and Workbench tabs if you declare them.
+3. Revoke the approval and confirm that the official interface returns.
+
+Record the tested AGH version, plugin commit, required enablement and approvals, and results in the plugin README or market PR description. `engines.agh` is your compatibility declaration, not a test result. Declare the versions you actually support rather than guessing a minimum. These are testing recommendations, not new market submission checks.
+
 ### Bundle third-party JavaScript for release
 
 If your plugin uses pure JavaScript dependencies that can be bundled, use a tool such as esbuild or Rollup **before tagging the release**. Include those dependencies in the output (for example, `dist/index.js`) instead of relying on users to download them after installing the plugin.
@@ -231,6 +254,8 @@ Open the PR's `market / validate-index` check and the `market / review-release` 
 Once merged, the [English](../README.md#listed-plugins) and [Chinese](../README.zh-CN.md#已收录) README tables on `main` show the new name and version. There is no separate README PR. Follow the GitHub Actions Pages deployment and verify your new version in the [live catalog](https://agnesai-labs.github.io/agh-plugin-market/plugins.html) and [published index](https://agnesai-labs.github.io/agh-plugin-market/index.json). Then open **Plugins → Market** in AGH, select **Community** or **All sources**, and search for your package. If the Pages index has the new version but AGH does not show it yet, the daemon may still be using its local cache. Try refreshing the view after the daemon has synchronized; the UI refresh rereads local state, not the remote index. Market listing enables discovery, not automatic installation or trust.
 
 ## Publish an update or remove a listing
+
+For a plugin with a UI, use the [plugin UI guidance in step 1](#plugin-ui-before-submission) for the new version.
 
 For an update, confirm the plugin repository still has the `agh-plugin` Topic, then repeat the release and account-authorization steps with a new stable version **strictly higher than every version currently listed for that package**. In the catalog data, change only its `versions` array and the matching pins in `plugins.txt`; keep the source URL line, row order, other fields, and other listings intact. Add a pin for the new version, with no `v` prefix and the full commit SHA. For example (replace the version and SHA with the real new values):
 

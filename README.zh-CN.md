@@ -26,6 +26,8 @@
 
 请阅读[公开插件上架教程](docs/submit-plugin.zh-CN.md)，按步骤准备插件和发版授权、提交并检查市场 PR，以及确认上架、更新版本或下架。
 
+如果首次上架或更新的插件带有界面，请参阅[如何在投稿前选择和测试插件界面](docs/submit-plugin.zh-CN.md#plugin-ui-before-submission)。
+
 首次上架或提交新版前，必须在插件仓库设置 `agh-plugin` 话题。`market / validate-index` 必过检查会核验话题，并用公开仓库中的确切固定提交复核 `provides`、`engines.agh` 和 Git 提交者时间。范围是作者的兼容性声明，不是安装或兼容性测试结果。没有改动的旧版本不会回源核验。
 
 ### 发版审核（仅报告）
